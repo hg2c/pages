@@ -1,0 +1,174 @@
+* INSTALL VAGRANT & VIRTUALBOX
+
+* ADD BOX
+
+vagrant box add BOX_NAME BOX_PATH
+
+$ vagrant box add base ~/box/base.box
+$ vagrant box add debian http://ergonlogic.com/files/boxes/debian-current.box  #增加一个box,debian就是box的title 后面跟vagrant上的virtualbox镜像地址
+
+* INIT & START
+
+mkdir dev; cd dev
+
+vagrant init base
+vagrant up
+
+
+* COMMANDS
+$ vagrant init  # 初始化
+$ vagrant up  # 启动虚拟机
+$ vagrant halt  # 关闭虚拟机
+$ vagrant reload  # 重启虚拟机
+$ vagrant ssh  # SSH 至虚拟机
+$ vagrant status  # 查看虚拟机运行状态
+$ vagrant destroy  # 销毁当前虚拟机
+
+# box管理
+$vagrant box list
+$vagrant box add
+$vagrant box remove
+
+* TIPS
+
+** 使用 Apache/Nginx 时会出现诸如图片修改后但页面刷新仍然是旧文件的情况，是由于静态文件缓存造成的。需要对虚拟机里的 Apache/Nginx 配置文件进行修改：
+
+# Apache 配置添加:
+EnableSendfile off
+
+# Nginx 配置添加:
+sendfile off;
+
+* MAKE BOX
+Create a new Virtual Machine with the following settings:
+Name: vagrant-ubuntu64
+Type: Linux
+Version: Ubuntu64
+Memory Size: 512MB (to taste)
+New Virtual Disk: [Type: VMDK, Size: 40 GB]
+Modify the hardware settings of the virtual machine for performance and because SSH needs port-forwarding enabled for the vagrant user:
+Disable audio
+Disable USB
+Ensure Network Adapter 1 is set to NAT
+Add this port-forwarding rule: [Name: SSH, Protocol: TCP, Host IP: blank, Host Port: 2222, Guest IP: blank, Guest Port: 22]
+Mount the Linux Distro ISO and boot up the server.
+
+** INSTALL SYSTEM
+
+set the user to vagrant and the password to vagrant.
+edit sudoers
+update system
+
+** set ssh key
+mkdir -p /home/vagrant/.ssh
+chmod 0700 /home/vagrant/.ssh
+wget --no-check-certificate \
+    https://raw.github.com/mitchellh/vagrant/master/keys/vagrant.pub \
+    -O /home/vagrant/.ssh/authorized_keys
+chmod 0600 /home/vagrant/.ssh/authorized_keys
+chown -R vagrant /home/vagrant/.ssh
+
+** veewee
+Fetching: net-ssh-2.9.2.gem (100%)
+Successfully installed net-ssh-2.9.2
+Fetching: mime-types-1.25.1.gem (100%)
+Successfully installed mime-types-1.25.1
+Fetching: Platform-0.4.0.gem (100%)
+Successfully installed Platform-0.4.0
+Fetching: open4-1.3.4.gem (100%)
+Successfully installed open4-1.3.4
+Fetching: popen4-0.1.2.gem (100%)
+Successfully installed popen4-0.1.2
+Fetching: thor-0.19.1.gem (100%)
+Successfully installed thor-0.19.1
+Fetching: highline-1.7.2.gem (100%)
+Successfully installed highline-1.7.2
+Fetching: progressbar-0.21.0.gem (100%)
+Successfully installed progressbar-0.21.0
+Fetching: i18n-0.7.0.gem (100%)
+Successfully installed i18n-0.7.0
+Fetching: ansi-1.3.0.gem (100%)
+Successfully installed ansi-1.3.0
+Fetching: ruby-vnc-1.0.1.gem (100%)
+Successfully installed ruby-vnc-1.0.1
+Fetching: builder-3.2.2.gem (100%)
+Successfully installed builder-3.2.2
+Fetching: excon-0.45.3.gem (100%)
+Successfully installed excon-0.45.3
+Fetching: formatador-0.2.5.gem (100%)
+Successfully installed formatador-0.2.5
+Fetching: net-scp-1.2.1.gem (100%)
+Successfully installed net-scp-1.2.1
+Fetching: fog-core-1.30.0.gem (100%)
+Successfully installed fog-core-1.30.0
+Fetching: multi_json-1.11.0.gem (100%)
+Successfully installed multi_json-1.11.0
+Fetching: fog-json-1.0.1.gem (100%)
+Successfully installed fog-json-1.0.1
+Fetching: mini_portile-0.6.2.gem (100%)
+Successfully installed mini_portile-0.6.2
+Fetching: nokogiri-1.6.6.2.gem (100%)Fetching: nokogiri-1.6.6.2.gem
+ERROR:  While executing gem ... (NoMethodError)
+    undefined method `size' for nil:NilClass
+
+* Using custom Vagrant SSH public/private keys
+COPY THE PUBLIC KEY:
+
+In order to use your custom generated public key we will need to copy it to the vagrant user’s authorized_keys file.
+
+
+1
+[joseph@home ~]$ cat $HOME/.ssh/id_rsa.pub | ssh vagrant@127.0.0.1 -p 2222 'cat >> $HOME/.ssh/authorized_keys'
+Assuming that you have your vagrant box running on localhost and port 2222. Then your public key has now been copied over to the vagrant user.
+
+MODIFY THE VAGRANTFILE
+
+We need to tell Vagrant that we are using our own public key instead of the usual supplied one. To do this we need to modify the Vagrantfile. Open the Vagrantfile for your Vagrant box in your favorite editor and add the following config parameter:
+
+
+1
+config.ssh.private_key_path = "/home/joseph/.ssh/id_rsa"
+The above config parameter is telling Vagrant to use your private key instead of the default one provided by Vagrant. You will want to give it the location of the private key you want to use.
+
+* leblanc
+
+sed -i 's/^\(Defaults.*requiretty\)/#\1/' /etc/sudoers
+echo 'vagrant ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+
+sed -i -e 's/^SELINUX=.*/SELINUX=permissive/' /etc/selinux/config
+
+yum update -y
+yum install -y bind-utils bridge-utils docker epel-release gcc git make net-tools tree tmux unzip wget zsh bzip2
+
+# yum install gcc make patch  dkms qt libgomp kernel-headers kernel-devel fontforge binutils glibc-headers glibc-devel
+
+# for ./VBoxLinuxAdditions.run
+yum install -y gcc kernel-devel
+
+
+# LMAP
+yum install -y httpd
+yum install -y mariadb-server
+yum install -y php php-pear php-fpm php-gd php-mysql php-mbstring php-pecl-imagick php-pecl-redis
+
+yum localinstall elasticsearch
+
+yum install redis
+
+** POST SETUP
+yum clean all
+cat /dev/null > ~/.bash_history && history -c && exit
+
+** package
+vagrant package --base leblanc
+
+vagrant box remove leblanc
+vagrant box add leblanc ./package.box
+
+vi /etc/default/grub
+grub2-mkconfig -o /boot/grub2/grub.cfg
+
+* LINK
+
+http://www.hostedcgi.com/how-to-create-a-centos-7-0-vagrant-base-box/
+http://www.slideshare.net/roidelapluie/vagrant-and-centos7

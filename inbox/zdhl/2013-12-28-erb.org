@@ -1,0 +1,514 @@
+---
+layout: post
+title: "愉快网 - ERB（商家、会员和电子会员卡）"
+date: 2013-12-28 17:49
+comments: true
+categories: home
+---
+
+#+TITLE: 愉快网 - ERB（商家、会员和电子会员卡）
+#+LANGUAGE: zh_CN
+#+AUTHOR: 罗涛
+#+EMAIL: lotreal@gmail.com
+#+OPTIONS: H:3 num:t   toc:3 \n:nil @:t ::t |:t ^:nil -:t f:t *:t <:nil
+#+OPTIONS: TeX:t LaTeX:nil skip:nil d:nil todo:t pri:nil tags:not-in-toc
+#+OPTIONS: author:t creator:t timestamp:t email:t
+#+DESCRIPTION: 愉快网 数据库
+
+* 概述
+
+因为现阶段的主要业务是为餐饮企业服务的ERB等，所以本文档重点考虑餐饮相关的信息化设计。
+
+* 术语
+
+1. uid :: 用户ID，注册用户时在系统生成的唯一标识。
+2. bid :: 商家ID，注册商家时在系统生成的唯一标识。
+
+3. TIME :: 时间字符串标准格式，详见附录。
+
+4. 翻台 :: 餐厅每张餐桌在客人用餐完毕后重新收拾并放置新餐具，叫翻台
+
+* 用户
+
+1. 为每个人分配一个独立的唯一标识：uid，或称 userpin
+2. 每个人有多种登录方式：手机号，邮箱，新浪微博，微信
+3. 每个人可作为多个商家的会员，并因此对应多个 profile
+
+#+begin_src plantuml :file assets/user.png :cmdline -charset UTF-8
+@startuml
+
+用户 --> (愉快网) : site_profile
+用户 ---> (德庄) : member[business='德庄']
+用户 ---> (牛尾巴) : member[business='牛尾巴']
+
+@enduml
+#+end_src
+
+#+results:
+[[file:assets/user.png]]
+
+* 商家
+** 组织结构
+
+#+begin_src plantuml :file assets/business-sample1.png :cmdline -charset UTF-8
+老麻抄手 : type = '品牌'
+老麻抄手解放碑店 : type = '餐厅'
+老麻抄手沙坪坝店 : type = '餐厅'
+
+顶新国际集团 : type = '公司'
+德克士 : type = '品牌'
+康师傅 : type = '品牌'
+重庆顶津 : type = '公司'
+西安顶津 : type = '公司'
+重庆德克士龙头寺店 : type = '餐厅'
+重庆康师傅私家面星光广场店 : type = '餐厅'
+西安德克士长安店 : type = '餐厅'
+
+Business <|-- 老麻抄手
+Business <|-- 顶新国际集团
+
+老麻抄手 <-- 老麻抄手解放碑店 : 品牌
+老麻抄手 <-- 老麻抄手沙坪坝店 : 品牌
+
+顶新国际集团 <-- 德克士 : 管理
+顶新国际集团 <-- 康师傅 : 管理
+
+顶新国际集团 <-- 重庆顶津 : 管理
+顶新国际集团 <-- 西安顶津 : 管理
+
+重庆顶津 <-- 重庆德克士龙头寺店 : 管理
+重庆顶津 <-- 重庆康师傅私家面星光广场店 : 管理
+西安顶津 <-- 西安德克士长安店 : 管理
+
+康师傅 <-- 重庆康师傅私家面星光广场店 : 品牌
+
+德克士 <-- 重庆德克士龙头寺店 : 品牌
+德克士 <-- 西安德克士长安店 : 品牌
+
+#+end_src
+
+#+results:
+[[file:assets/business-sample1.png]]
+
+** business
+
+#+begin_src plantuml :file assets/business.png :cmdline -charset UTF-8
+class Business {
+  name
+  type
+}
+
+Business <|-- Band
+Business <|-- Restaurant
+
+note as Comment
+  1. Business 取 B2C 里 B 的意思，代表一种商业行为主体
+  2. Band, Restaurant 等，都是一种 Business
+  3. Business 之间可通过父子关系，构成树状结构
+end note
+#+end_src
+
+#+results:
+[[file:assets/business.png]]
+
+
+
+* 餐饮订单
+
+#+begin_src plantuml :file assets/order_state.png :cmdline -charset UTF-8
+@startuml
+scale 900 width
+'http://click.sourceforge.net/images/activity-diagram-small.png
+title 餐饮订单状态图
+
+note as Comment
+共 预订、排队、取消、确定、服务中、支付 6 个状态
+end note
+
+[*] --> QUEUE : 直接到店
+[*] --> BOOK : 预定入口
+
+state QUEUE {
+  已到店 --> 开台
+  开台 --> SERVE : 有座位
+
+  已到店 --> 排队 : 无座位
+  排队 --> SERVE : 翻台
+
+  已到店 --> CANCEL : 用户未消费
+}
+
+state BOOK {
+  预定 : 时间、桌台、点菜
+  预定 --> 创建订单
+  创建订单 --> 支付定金 : 需付定金
+
+  支付定金 --> 已预订
+  创建订单 --> 已预订 : 不需定金
+
+  已预订 --> CONFIRM : 商家接受预定
+  已预订 --> CANCEL : 商家拒绝预定
+}
+
+
+state CONFIRM {
+  已确定 --> 上菜 : 需提前上菜
+  上菜 --> 等待用户到店
+
+  已确定 --> 等待用户到店
+
+  等待用户到店 --> CANCEL : 用户未到店
+  等待用户到店 --> QUEUE : 用户已到店
+
+  已确定 --> CANCEL : 用户取消
+}
+
+state SERVE {
+  服务 : 上菜、加菜等
+  服务 --> 完成消费
+  完成消费 --> PAY : 结账
+  完成消费 --> 翻台
+}
+
+state CANCEL {
+  退款 : 如需退定金
+}
+
+state PAY {
+  折扣 : 预定、特别，会员卡折扣等
+  折扣 --> 买单
+}
+
+CANCEL --> [*]
+PAY --> [*]
+@enduml
+#+end_src
+
+#+results:
+[[file:assets/order_state.png]]
+* 电子会员卡
+
+** 发行规则
+
+*** 定义
+使用约定好的自定义字符串表达发行规则。规则可设置变量，也可调用存储于其它表的数据（如邀请好友数）。
+
++ 发行规则若包含变量，用 '规则(变量) ' 表示，如 'b(2)'
++ 一张卡可以有多条发行规则，多条规则之间用分号分隔，比如 'a;b(2);c'
++ 发行规则 a, b, c 之间是 OR 关系，即 a || b(2) || c
++ 示例：total_cost_X_and_invite_Y({X:2,Y:8});once_cost({X:300});total_cost(1000)
++ 添加规则时，在规则定义里约定一个字符串和参数即可
++ 约定规则为小写字母和下划线组成，约定规则中的变量用大写字母
+
+*** 使用
+取出规则字符串后，由程序解析。可根据具体情况优化解析逻辑。
+
+*** 已约定的发行规则表
+
+| 规则定义                  | 变量      | 规则说明                                         |
+|---------------------------+-----------+--------------------------------------------------|
+| any                       | 无        | 无需条件                                         |
+| total_cost                | 1000      | 累计消费额达 1000 元                             |
+| once_cost_X               | {X:300}   | 单次消费额达 X=300 元                            |
+| total_cost_X_and_invite_Y | {X:2,Y:8} | 累计消费次数达 X=2 次，且成功邀请好友数达 Y=8 次 |
+| had_starlight_card        | 无        | 曾经拥有过星光卡                                 |
+
+** 有效期规则
+
+*** 已约定的有效期规则表
+
+| 规则定义   | 规则说明                |
+|------------+-------------------------|
+| never / 0  | 永不过期                |
+| +1year     | 至发行之日起一年后过期  |
+| +6month    | 至发行之日起6个月后过期 |
+| 1383812965 | 过期时间戳              |
+
+
+** 商家会员信息表 business_member
+   - 本表保存商家的会员信息，表内信息由商家自主收集
+   - 用户信息在商家间，商家和愉快网之间不共享。如用户可能在愉快网叫小王，但在商家1叫王大，在品牌2叫王二
+   - 序号为用户加入该商家会员的顺序号，可用于电子会员卡的会员编号等
+   - ERB中要求明文显示密码，暂明文存储，建议程序中封装以待后续改变。
+   - TODO 客户经理
+
+** 商家会员积分操作记录表 business_member_point_log
+   - 本表可能由自动操作规则修改。
+
+*** 积分操作规则说明
++ 使用操作规则的表，需建立 规则模式 和 变量值 两个字段
+
++ 规则模式 rule
+  - 定义：是一个用来标识一类规则的字符串。
+  - 可变量：可选则在规则模式中，使用大写字母表示需在管理界面配置的变量。
+
+  - 积分操作规则列表:
+     | 模式                    | 说明                       |
+     |-------------------------+----------------------------|
+     | use                     | 正常使用                   |
+     | get_X_point_per_invited | 每成功邀请 1 人奖励 X 积分 |
+     | promotion               | 营销活动赠送               |
+     | get_X_point_per_cost_Y  | 单次消费满 Y 元得 X 积分   |
+
+
++ 变量值 value
+  本字段用来保存 规则模式 中的 可变量值，可以直接保存数字。当可变量不只一个时，使用 JSON 字符串保存。
+  示例：
+  | pattern                 | parameters     | comment                     |
+  |-------------------------+----------------+-----------------------------|
+  | get_X_point_per_invited | 11             | 每成功邀请 1 人奖励 11 积分 |
+  | promotion               | 100            | 赠送 100 积分               |
+  | get_X_point_per_cost_Y  | {X:100,Y:10}   | 单次消费满 100 元得 10 积分 |
+  | get_X_point_per_cost_Y  | {X:1000,Y:200} | 单次消费满 100 元得 10 积分 |
+
+
+** 电子会员卡定义表 ecard_define
+   - 本表定义一个电子会员卡类别
+   - 电子会员卡由商家自主发行
+   - 卡片状态有: 1-启用，0-停用
+   - 会员等级是一个数字序列，数字越小会员级别越低。自动换卡规则会用到会员等级，比如换发比现有卡高一个等级的会员卡。
+   - 优惠规则：比如 0.8，表示 8 折，建议封装以便扩展。
+   - 发行条件暂可为空，使用手动发卡。
+
+** 电子会员卡操作记录表 ecard_change_log
+   - 本表可用于查询指定会员的现有会员卡
+   - 开卡时设置老卡ID 为空
+   - 销卡时设置新卡ID 为空
+   - 记录用户换卡
+
+* 类图
+
+#+begin_src plantuml :file assets/manager_class.png :cmdline -charset UTF-8
+@startuml
+class 操作记录 << (I,orchid) >>
+class 操作记录 {
+    creator
+    created
+    modifier
+    modified
+}
+
+package Manager {
+  class OrderManager {
+    creat(order) 创建订单
+
+    addMenu(order, menu) 添加菜单
+
+    edit(order, modifiedProps) 修改订单
+    confirm(order) 确定订单
+    reject(order) 拒绝订单
+
+    openTable() 开台
+    changeTable() 换台
+    lockTable() 锁台
+    releaseTable() 翻台
+
+    pay(order, money) 支付订单
+  }
+
+  class MemberManager {
+    getMember(uid, business_id)
+    createMember(uid, business_id)
+    exsit(uid, business_id)
+  }
+}
+@enduml
+#+end_src
+
+#+begin_src plantuml :file assets/base_class.png :cmdline -charset UTF-8
+@startuml
+
+package Base {
+  class Login {
+    PK uid
+
+    email 电子邮箱
+    mobile 手机号码
+    sina 新浪微博
+    wechat 微信
+
+    password
+
+    setUserId(email)
+    setUserId(mobile)
+    setPassword(password)
+
+    authorize()
+
+    getUid()
+  }
+
+  class Business {
+    type 商家类型
+  }
+
+  class Restaurant {
+    type := RESTAURANT
+  }
+
+  Business <|-- Restaurant
+
+
+  class Member {
+    PK uid
+    PK bid
+
+    .. 基本信息 ..
+    sn 序号
+    name 姓名:潘飞由
+    sex 性别
+    birthday 生日
+    job 身份职位:宝洁公司-市场经理
+    security_code 验证码:123456
+    point 代金币:999
+    manager 客户经理
+    comment 备注
+  }
+
+  class MemberBehavior {
+    __ 用户习惯 __
+    recommend_count 推荐好友数
+    cost_times 累计消费次数:10
+    cost_total 累计消费金额:1000
+
+    taste 口味:清淡
+    favorite_dishs 菜品喜好:清蒸鱼
+    favorite_tables 常定餐位:牡丹，月季
+  }
+
+  class MemberCard {
+    PK uid
+    PK business_id
+
+    .. 卡片信息 ..
+    sn 卡片序列数字
+    number 会员卡编号
+    type 会员卡类别
+    expire 卡片过期时间
+    comment 备注
+  }
+
+  Login -- Member
+
+  class Restaurant {
+    getReport() 返回当天，当时段桌台状态
+
+    getTables() 所有桌台
+    getTables(type = room) 所有包房桌台
+    getTables(type = hall) 所有大厅桌台
+
+    getOrders(presetTime = TODAY) 当天的所有订单
+    getLunchOrders(presetTime = TODAY) 当天的午餐订单
+    getDinnerOrders(presetTime = TODAY) 当天的晚餐订单
+
+    getPendingOrders() 待确定订单
+    getNumOfPendingOrders() 待确定订单数量
+  }
+
+  class Table {
+    .. 属性 ..
+    name 名字：牡丹厅
+    capacity 容量、座位数：10人
+    area 餐区：六楼
+    status 状态：free 空台，selected 已选，locked 已锁台，opened 已开台
+    order 当前订单
+
+    .. 布尔类型属性 ..
+    isPrivateRoom() 这是包房吗？
+    isLocked() 被锁定？
+    canOpen 能开台吗？TODO
+
+    .. 动作 ..
+    open() 开台
+    changeTo() 换台()
+  }
+
+  class Order {
+    username 下单用户 飞由
+    contact 联系电话 13012341234
+
+    time 预定到店时间
+    period 预定时段，同 Restaurant.period
+    tables 预定桌台
+
+    amount 总金额
+    discount 折扣
+    paid 已支付金额
+
+    hasClosed() 已结清？
+    hasCanceled() 已取消？
+    hasConfirmed() 已确定？
+
+    servingInAdvance 提前上菜？
+
+    status 状态（用户取消、未到店、未消费）
+    comment 备注
+  }
+
+  class Menu {
+    items 菜品，包房费等资源对象数组
+  }
+}
+@enduml
+#+end_src
+
+** Restaurant.getReport()
+
+/2013/12/25/dinner
+
+#+begin_src json
+[ table ]
+#+end_src
+
+
+* 接口
+
+** 调用形式
+
+| 定义                            | 示例                                                   |
+|---------------------------------+--------------------------------------------------------|
+| YResult YApi.call(api, args)    | YApi.call('/restaurant/tables', BID, TIME)             |
+|                                 |                                                        |
+| JsonObject YResult.getJson()    | YApi.call('/restaurant', BID).getJson()                |
+| Object YResult.getObject(class) | YApi.call('/restaurant', BID).getObject('restaurant')  |
+
+MemberManager.import(电子邮件, 电话, 新浪微博, 微信, 姓名, 性别, 生日, 职位, 客户关系, 说明)
+
+* 附录
+
+** 统一命名表
+
+为方便沟通、使用，统一命名方案，特列此表。
+
+- created :: 创建时间
+- creater :: 创建人
+- modified :: 修改时间
+- modifier :: 修改人
+
+- intro :: 简单介绍
+- description :: 详细介绍
+- comment :: 备注
+
+- user :: 愉快网用户
+- member :: 商家会员
+- business :: 商家
+- band :: 品牌
+
+- restaurant :: 餐厅
+- appt appointment ::  预约
+- table :: 桌台
+
+** TIME
+
+考虑到餐饮商家特点，加入了时段概念，表示午餐、晚餐。
+
+| 字符串             | 表示                          |
+|--------------------+-------------------------------|
+| /2013/12/25/lunch  | 2013-12-25 午餐（适用于餐厅） |
+| /2013/12/25/dinner | 2013-12-25 晚餐（适用于餐厅） |
+| /2013/12/25/13/30  | 2013-12-25 13:30              |
+
+** 参考链接
+
+- http://angularjs.org/
+- http://socket.io/

@@ -1,0 +1,111 @@
+#+TITLE: 愉快网接口文档(Rev_9)
+
+* 接口规范
+
+** 简洁
+
+接口设计应尽量简洁。对外暴露尽量少的接口。比如选桌接口（预定时选桌）后是否锁台，锁台后是否自动释放，预定后是否需要确认。这些操作由接口内部逻辑处理，不暴露在外。
+
+** 封装
+
+把接口调用封装成SDK，隔离接口的实现和调用。以便更换接口版本，更改接口实现方式等
+
+#+INCLUDE: "assets/sample/api.php" src php
+
+Java 也实用类似的方式调用接口。
+
+* 接口列表
+
++ 优惠劵
+  | coupon/get    | 优惠劵领取 |
+  | coupon/valid  | 优惠劵验证 |
+  | coupon/add    | 优惠劵新建 |
+  | coupon/edit   | 优惠劵编辑 |
+  | coupon/list   | 优惠劵列表 |
+  | coupon/detail | 优惠劵详情 |
+
++ 餐厅
+  | restaurant/config     | 获取餐厅配置                     |
+  | booking/restaurant    | 预定餐厅                         |
+  | cart/view             | 购物车查看                       |
+  | cart/add              | 购物车添加                       |
+  | cart/remove           | 购物车删除                       |
+  | cart/checkout         | 购物车结账                       |
+  |                       |                                  |
+  | restaurant/stat/month | 统计餐厅月上座率，开台率，翻台率 |
+
++ 订单
+  | order/add     | 订单创建 |
+  | order/edit    | 订单编辑 |
+  | order/remove  | 订单删除 |
+  | order/cancel  | 订单取消 |
+  | order/confirm | 订单确定 |
+
++ 菜品
+  | dish/query  | 根据搜索条件列出菜品 |
+  | dish/add    | 添加菜品             |
+  | dish/remove | 删除菜品             |
+  | dish/edit   | 编辑菜品             |
+
++ 点菜
+  | menu/view   | 查看菜单 |
+  | menu/add    | 菜单添加 |
+  | menu/remove | 菜单删除 |
+
++ 桌台
+  | table/query  | 根据查询条件列出桌台 |
+  | table/add    | 添加桌台             |
+  | table/remove | 删除桌台             |
+  | table/edit   | 编辑桌台             |
+  | table/select | 选中桌台             |
+  | table/open   | 开台                 |
+
++ 微博
+  | weibo/me     | 获取当前登录的微博用户信息 |
+  | weibo/update | 发微博，可带图片           |
+
+* 微博
+
+** weibo/me
+
+获取当前登录的微博用户信息
+
+*** 调用
+ykapi('weibo/me', uid)
+
+*** 参数
++ uid :: 用户ID，对应绑定的 access_token 。如 userpin （注意：不一定是微博uid）
+
+*** 返回值
+正常情况接口返回用户信息数组。如：
+
+#+INCLUDE: "assets/json/WeiboMe.json" src js
+
+如果发生错误，比如当前用户没有登录微博，则返回：
+
+#+INCLUDE: "assets/json/WeiboError.json" src js
+
+此时，可跳转到返回值中的 login_url 以登录微博系统。
+
+** weibo/update
+
+发微博，可带图片
+
+*** 调用
+ykapi('weibo/update' , uid, text [, pic]);
+
+*** 参数
+- uid :: 用户ID，对应绑定的 access_token 。如 userpin （注意：不一定是微博uid）
+- text :: 微博文字。
+- pic :: 【可选】图片地址。如赋值则和文字一并发到微博。
+
+*** 返回值
+正常情况下，会返回微博发送详情。如：
+
+#+INCLUDE: "assets/json/WeiboUpdateOk.json" src js
+
+发送失败时，会返回错误原因。如：
+
+#+INCLUDE: "assets/json/WeiboError.json" src js
+
+如果错误原因是 Acceess Token 过期，请登录后重发。

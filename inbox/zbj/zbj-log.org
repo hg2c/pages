@@ -1,0 +1,489 @@
+#+TITLE: 日志服务 - ELK
+#+OPTIONS: toc:2 H:3
+
+* Preface
+
+ELK - Logstash, Elasticsearch and Kibana
+
+** Logstash
+
+输入-处理-输出.png
+
+** Elasticsearch
+
+搜索
+
+** Kibana
+
+展示.png
+
+[[file:assets/elk_architecture.png]]
+
+* Elasticsearch
+
+** 介绍（30秒）
+
+- Schema-free
+- REST & JSON
+- 分布式，可水平扩展
+- 零配置
+- github：20T, 1.3亿文件，1300亿行代码
+
+TODO：github use es
+
+** 安装（30秒）
+
+#+begin_src
+tar xf elasticsearch-1.4.2.tar.gz
+./elasticsearch-1.4.2/bin/elasticsearch
+#+end_src
+
+** 增删改查
+
+TODO: picture
+
+* Logstash
+
+** 介绍
+
+- 收集，解析，完善，保存
+- 非常多的输入输出插件
+
+** 为什么提供日志服务？
+
+- 无须服务器权限查看日志文件
+- awk, sed, grep, wc..：限制多，速度慢
+- 报表
+
+** Logstash 架构
+
+[[file:assets/logstash-architecture.png]]
+
+** Inputs
+
+- Monitoring: collectd, graphite, ganglia, snmptrap, zenoss
+- Datastores: elasticsearch, redis, sqlite, s3
+- Queues: rabbitmq, zeromq
+- Logging: eventlog, lumberjack, gelf, log4j, relp, syslog, varnish log
+- Platforms: drupal_dblog, gemfire, heroku, sqs, s3, twitter
+- Local: exec, generator, file, stdin, pipe, unix
+- Protocol: imap, irc, stomp, tcp, udp, websocket, wmi, xmpp
+
+** Filters
+
+- alter, anonymize, checksum, csv, drop, multiline
+- dns, date, extractnumbers, geoip, i18n, kv, noop, ruby, range
+- json, urldecode, useragent
+- metrics, sleep
+- ... many, many more ...
+
+** Outputs
+
+- Store: elasticsearch, gemfire, mongodb, redis, riak, rabbitmq
+- Monitoring: ganglia, graphite, graphtastic, nagios, opentsdb, statsd, zabbix
+- Notification: email, hipchat, irc, pagerduty, sns
+- Protocol: gelf, http, lumberjack, metriccatcher, stomp,
+- External Monitoring: boundary, circonus, cloudwatch, datadog, librato
+- External service: google big query, google cloud storage, jira, loggly, riemann, s3, sqs, syslog, zeromq
+- Local: csv, exec, file, pipe, stdout, null
+
+** 安装
+
+#+begin_src sh
+git clone git://github.com/elasticsearch/logstash-forwarder.git
+cd logstash-forwarder
+go build
+#+end_src
+
+** 示例
+
+#+begin_src
+# 配置
+
+cat sample.conf
+input {
+  stdin {}
+}
+filter {
+  grok {
+    match => [ "message", "%{WORD:firstname} %{WORD:lastname} %{TIMESTAMP:birthday}" ]
+  }
+  date {
+    match => [ "birthday", "MMM  d HH:mm:ss", "MMM dd HH:mm:ss" ]
+  }
+}
+output {
+  stdout { debug => true }
+}
+
+
+# 启动
+
+echo "Alexander Reelsen Jun 10 04:04:01" | logstash-1.4.2/bin/logstash -f sample.conf
+{
+       "message" => "Alexander Reelsen 30",
+      "@version" => "1",
+    "@timestamp" => "2014-06-10T04:04:01.000+02:00",
+          "host" => "kryptic",
+     "firstname" => "Alexander",
+      "lastname" => "Reelsen",
+      "birthday" => "Jun 10 04:04:01"
+}
+#+end_src
+
+** logstash-forwarder
+
+- 伐木工 lumberjack
+- 监测文件，发现新添内容，转发到 logstash 服务器
+- 工作：tail -f xx.log
+- TLS 加密传输
+- 兼容 logrotate
+- 错误重发
+
+#+begin_src sh
+# 配置
+
+cat logstash-forwarder.json
+{
+  "network": {
+    "servers":       [ "114.215.210.202:5043" ],
+    "ssl ca":          "/luo/abc/log/selfsigned.crt",
+    "ssl certificate": "/luo/abc/log/selfsigned.crt",
+    "ssl key":         "/luo/abc/log/selfsigned.key"
+  },
+
+  "files": [
+    {
+      "paths": [ "/var/log/nginx/*.log", "/var/log/httpd/*.log" ],
+      "fields": { "environment": "development", "type": "http_access", "cluster": "master"  }
+    },
+    {
+      "paths": [ "/var/log/webim/*.log" ],
+      "fields": { "environment": "development", "type": "webim", "host": "68"  }
+    }
+  ]
+}
+
+
+# 启动
+
+./logstash-forwarder -config logstash-forwarder.json
+#+end_src
+
+
+
+** logstash-shipper
+
+- 收件人：快
+- input: lumberjack
+- filter: 为空，或只含拒收规则
+- output: 队列（redis, RabbitMQ, ActiveMQ）
+
+#+begin_src
+# 安装
+
+tar xf logstash-1.4.2.tar.gz
+
+
+# 配置
+
+cat shipper.conf
+input {
+  lumberjack {
+    port => 5043
+    type => "logs"
+    ssl_certificate => "/etc/logstash/selfsigned.crt"
+    ssl_key         => "/etc/logstash/selfsigned.key"
+  }
+}
+
+output {
+  redis {
+    host => "localhost"
+    data_type => "list"
+    key => "logstash"
+    congestion_threshold => 20000000
+  }
+  stdout {
+    codec => rubydebug
+  }
+}
+
+# 启动
+
+logstash-1.4.2/bin/logstash -f /etc/logstash/shipper.conf
+#+end_src
+
+** logstash-indexer
+
+#+begin_src
+# 配置
+
+input {
+  redis {
+    host => "localhost"
+    data_type => "list"
+    key => "logstash"
+    threads => 2
+    batch_count => 1000
+  }
+}
+
+filter {
+  # TODO
+}
+
+output {
+  stdout {
+    codec => rubydebug
+  }
+  hdfs {
+    path => "/user/logstash/performance-%{+YYYY.MM.dd_HH}.json"
+    hadoop_config_resources => [ "/opt/hadoop-2.6.0/etc/hadoop/core-site.xml" ]
+    enable_append => true
+  }
+}
+
+
+# 启动
+
+/opt/logstash-hdfs.sh
+#+end_src
+
+
+** elasticsearch-hadoop
+
+使用 Hive External Table 机制读写 ES
+
+* 最佳实践
+
+首先你的程序要写日志
+记录的日志要能帮助你分析问题，只记录"参数错误"这样的日志对解决问题毫无帮助
+不要依赖异常，异常只处理你没考虑到的地方
+要记录一些关键的参数，比如发生时间、执行时间、日志来源、输入参数、输出参数、错误码、异常堆栈信息等
+要记录sessionid、transitionid、userid等帮你快速定位以及能把各个系统的日志串联起来的关键参数
+推荐纯文本+json格式
+使用队列
+其他日志辅助工具
+rsyslog
+syslog-ng
+graylog
+fluentd
+nxlog
+
+* 附录
+** logstash-forwarder 证书问题
+
+用 logstash-forwarder 官网的方法生成证书：
+
+$ openssl req -x509 -batch -nodes -newkey rsa:2048 -keyout logstash-forwarder.key -out logstash-forwarder.crt -days 365
+
+可能会报错：Failed to tls handshake with x.x.x.x x509: cannot validate certificate for x.x.x.x because it doesn't contain any IP SANs
+
+
+解决方法（来源：[[https://github.com/elasticsearch/logstash-forwarder/issues/221#issuecomment-48823952][SSL handshake fails because IP SANs are missing]]）：
+
+https://github.com/driskell/log-courier/raw/develop/src/lc-tlscert/lc-tlscert.go
+wget https://github.com/driskell/log-courier/blob/develop/src/lc-tlscert/lc-tlscert.go
+go build lc-tlscert.go
+./lc-tlscert
+
+注意：DNS or IP address 1 填入 logstash 服务器的IP地址
+
+** logstash-forwarder 端口拒绝连接
+
+#+begin_src sh
+# firewalld
+firewall-cmd --zone=public --add-port=5043/tcp --permanent
+firewall-cmd --reload
+
+# iptables
+systemctl stop firewalld
+systemctl mask firewalld
+yum install iptables-services
+systemctl enable iptables
+
+iptables -nL | less
+logstash 服务器打开 5043 端口
+iptables -I INPUT -p tcp --dport 5043 -j ACCEPT
+service iptables save
+#+end_src
+
+
+** logstash-hdfs.sh
+
+#+begin_src sh
+#!/bin/bash
+LOGSTASH_DIR=/opt/logstash-1.4.2
+HADOOP_DIR=/opt/hadoop-2.6.0
+
+export LD_LIBRARY_PATH="$HADOOP_DIR/lib/native"
+export GEM_HOME=$LOGSTASH_DIR/vendor/bundle/jruby/1.9
+
+CLASSPATH=$(find $LOGSTASH_DIR/vendor/jar -type f -name '*.jar'|tr '\n' ':')
+CLASSPATH=$CLASSPATH:$(find $HADOOP_DIR/share/hadoop/common/lib/ -name '*.jar' | tr '\n' ':')
+CLASSPATH=$CLASSPATH:$HADOOP_DIR/share/hadoop/hdfs/hadoop-hdfs-2.6.0.jar
+CLASSPATH=$CLASSPATH:$HADOOP_DIR/share/hadoop/common/hadoop-common-2.6.0.jar
+CLASSPATH=$CLASSPATH:$HADOOP_DIR/etc/hadoop
+export CLASSPATH
+
+java org.jruby.Main -I$LOGSTASH_DIR/lib $LOGSTASH_DIR/lib/logstash/runner.rb agent -f /etc/logstash/indexer.conf -p ./logstash-hdfs/lib
+#+end_src
+* 相关链接
+
++ 实验环境
+
+  - [[http://114.215.210.202:50070][Hadoop@jb]]
+
+  - [[http://114.215.210.202:8088][Yarn@jb]]
+
+  - [[http://114.215.210.202:9200/][elasticsearch@jb]]
+
+  - [[http://grokdebug.herokuapp.com/][Grok Debugger]]
+
++ 下载
+
+  - [[http://www.elasticsearch.org/overview/elkdownloads/][download: elasticsearch logstash kibana]]
+
+  - [[https://github.com/elasticsearch/logstash-forwarder][elasticsearch/logstash-forwarder(lumberjack)]]
+
+  - [[https://github.com/avishai-ish-shalom/logstash-hdfs][avishai-ish-shalom/logstash-hdfs]]
+
+  - [[http://www.elasticsearch.org/overview/hadoop/download/][elasticsearch for apache hadoop]]
+
++ 参考书籍
+
+  - [[http://shgy.gitbooks.io/mastering-elasticsearch/][Mastering Elasticsearch(中文版)]]
+
+  - [[http://learnes.net/][Elasticsearch 权威指南]]
+
+  - [[https://github.com/chenryn/logstash-best-practice-cn/blob/master/SUMMARY.md][Logstash 最佳实践]]
+
+  - [[https://github.com/chenryn/kibana-guide-cn/blob/master/SUMMARY.md][Kibana 中文指南]]
+
++ 参考文章
+
+  - [[https://speakerdeck.com/elasticsearch/scale-12x-introduction-to-elasticsearch-logstash-and-kibana][Elasticsearch, Logstash & Kibana]]
+
+  - [[http://michael.bouvy.net/blog/en/2013/11/19/collect-visualize-your-logs-logstash-elasticsearch-redis-kibana/][Collect & visualize your logs with Logstash, Elasticsearch & Redis]]
+
+  - [[https://www.korekontrol.eu/blog/tips-for-centralized-logging-infrastructure-with-logstash][Tips for centralized logging infrastructure with logstash]]
+
+  - [[http://nkcoder.github.io/blog/20141106/elkr-log-platform-deploy-ha/][ElasticSearch+LogStash+Kibana+Redis日志服务的高可用方案]]
+
+  - [[http://nkcoder.github.io/blog/20141031/elkr-log-platform-deploy/][使用ElasticSearch+LogStash+Kibana+Redis搭建日志管理服务]]
+
+  - [[http://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/SingleCluster.html][Hadoop MapReduce Next Generation - Setting up a Single Node Cluster]]
+
+  - [[https://cwiki.apache.org/confluence/display/Hive/Home][Apache Hive]]
+
+  - [[http://www.elasticsearch.org/guide/en/elasticsearch/hadoop/current/hive.html#_writing_data_to_elasticsearch_2][Elasticsearch as external table for Hive]]
+
+  - [[https://github.com/elasticsearch/logstash/blob/v1.4.2/patterns][logstash grok patterns]]
+
+  - [[http://www.aliyun.com/product/sls/#Help][阿里云简单日志服务SLS]]
+
+  - [[http://developer.baidu.com/wiki/index.php?title=docs/cplat/bae/log][百度云分布式日志]]
+
+* docker
+
+docker pull redis nginx golang
+
+http://abc.dev.us/log/kibana-jb/index.html#/dashboard/file/logstash.json
+http://114.215.210.202:9200/_search
+
+
+* PPT
+
+github solor
+
+线上流量高峰一个CDN节点每分钟产生数GB的日志，syslog-ng处理不过来。。
+
+kafka + flume + storm来做实时日志分析
+
+
+有些朋友，不关心你飞得累不累，只关心你飞不飞得动，比如 logstash
+
+
+http://www.andreagrandi.it/2014/10/25/automatically-pull-updated-docker-images-and-restart-containers-with-docker-puller/
+
+http://114.215.210.202:52100/
+
+* ELK
+
+git clone https://github.com/lotreal/elasticsearch-docker.git
+cd elasticsearch-docker
+make pull run
+
+git clone https://github.com/lotreal/logstash-docker.git
+cd logstash-docker
+
+* Snippet
+
+input {
+  file {
+    path => "/var/log/apache2/*access.log"
+    type => "apache"
+  }
+}
+
+filter {
+  if [type] == "apache" {
+    grok {
+      pattern => "%{COMBINEDAPACHELOG}"
+    }
+  }
+}
+
+output {
+  redis { host => "10.0.0.5" data_type => "list" key => "logstash" }
+}
+
+
+/usr/share/grok/patterns/iptables
+# Source : http://cookbook.logstash.net/recipes/config-snippets/
+NETFILTERMAC %{COMMONMAC:dst_mac}:%{COMMONMAC:src_mac}:%{ETHTYPE:ethtype}
+ETHTYPE (?:(?:[A-Fa-f0-9]{2}):(?:[A-Fa-f0-9]{2}))
+IPTABLES1 (?:IN=%{WORD:in_device} OUT=(%{WORD:out_device})? MAC=%{NETFILTERMAC} SRC=%{IP:src_ip} DST=%{IP:dst_ip}.*(TTL=%{INT:ttl})?.*PROTO=%{WORD:proto}?.*SPT=%{INT:src_port}?.*DPT=%{INT:dst_port}?.*)
+IPTABLES2 (?:IN=%{WORD:in_device} OUT=(%{WORD:out_device})? MAC=%{NETFILTERMAC} SRC=%{IP:src_ip} DST=%{IP:dst_ip}.*(TTL=%{INT:ttl})?.*PROTO=%{INT:proto}?.*)
+IPTABLES (?:%{IPTABLES1}|%{IPTABLES2})
+
+input {
+  file {
+    path => [ "/var/log/syslog" ]
+    type => "iptables"
+  }
+}
+
+filter {
+  if [type] == "iptables" {
+    grok {
+      patterns_dir => "/usr/share/grok/patterns/iptables"
+      pattern => "%{IPTABLES}"
+    }
+  }
+}
+
+output {
+  # Check that the processed line matched against grok iptables pattern
+  if !("_grokparsefailure" in [tags]) {
+    redis { host => "10.0.0.5" data_type => "list" key => "logstash" }
+  }
+}
+
+
+input {
+  file {
+    type => "syslog"
+    path => [ "/var/log/*.log", "/var/log/messages", "/var/log/syslog" ]
+  }
+  redis {
+    host => "127.0.0.1"
+    data_type => "list"
+    key => "logstash"
+    codec => json
+  }
+}
+output {
+  elasticsearch { bind_host => "127.0.0.1" }
+}

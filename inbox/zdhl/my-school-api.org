@@ -1,0 +1,500 @@
+#+OPTIONS: ^:nil
+#+TITLE: 我的大学 API 文档(Rev12)
+
+* 接口说明
+
+1. 接口正常返回值格式为： {data: [Object], meta: [Object]} ，data 的键值说明请据文末数据字典查询，meta.count 表示记录总数，供分页使用。
+
+2. 接口错误返回值格式为： {error: Exception}。
+
+3. POST 数据给相应接口时，数据格式均使用 application/json 。
+
+4. [[https://chrome.google.com/webstore/detail/advanced-rest-client/hgmloofddffdnphfgcellkdfbfbjeloo][Advanced REST client]] （一个 Google Chrom REST 插件）等浏览器插件，对于调试接口很有帮助。
+
+* 参数说明
+
+1. 需要分页的，例如获取列表类接口，其分页参数均为：
+
+   p=页数(默认值为1)，ps=页面大小(默认值为20)
+
+   示例：http://myschool.yukuai.cn/api/news?p=2&ps=10
+
+2. 需要权限的接口，需先通过用户登录接口得到 token，然后在 header 或 url query 中使用。
+
+   示例：
+
+   #+begin_src sh
+   # Authorization Header
+   curl -X GET -H "Authorization: $ACCESS_TOKEN" http://myschool.yukuai.cn/api/widgets
+
+   # Query Parameter
+   curl -X GET http://myschool.yukuai.cn/api/widgets?access_token=$ACCESS_TOKEN
+   #+end_src
+
+* 接口调用列表
+** 多媒体文件上传接口
+
+POST/FORM http://myschool.yukuai.cn/api/media/upload
+
+调用示例:（使用 curl 命令，用 FORM 表单方式上传一个多媒体文件）：
+
+curl -F media=@test.jpg "http://myschool.yukuai.cn/api/media/upload"
+
+返回值：
+#+begin_src js
+{
+  data: {
+    "media_url":"http://img.uni.yukuai.cn/upload/fb/848860.jpg",
+    "created":1408436657
+  }
+}
+#+end_src
+
+说明：
+1. 本接口需要登录，参见 2.2 设置 token
+
+** 用户登录接口
+
+POST http://myschool.yukuai.cn/api/users/login
+
+参数：
+
+1. email: 登录用 email
+
+2. password: 密码
+
+3. ttl: token 过期时间，单位为秒。
+
+示例 (xy@yukuai.cn 为测试账号)：
+
+#+begin_src sh
+curl -X POST -H "Content-Type:application/json" \
+-d '{"email": "xy@yukuai.cn", "password": "dev", "ttl": 1209600000}' \
+http://myschool.yukuai.cn/api/users/login
+#+end_src
+
+返回：
+#+begin_src js
+{
+  data: {
+    id: "88jTrpqJAPSMcESjNHmqC4f1CSBQzr3T8Dbl31d0229D5u00geIWlb2AQNBBFmde"
+    ttl: 31556926
+    created: "2014-08-12T01:09:19.963Z"
+    userId: 1
+  }
+}
+#+end_src
+
+** 文章类接口
+*** 获取文章列表：
+
+参数：参见分页参数。
+
+返回值：参加数据字典中的用户和文章节。
+
+1. 主页(前 N 条记录保证有主题图片，用作 slide。暂时 N = 1)
+
+   GET http://myschool.yukuai.cn/api/homepage
+
+2. 新闻
+
+   GET http://myschool.yukuai.cn/api/news
+
+3. 通知
+
+   GET http://myschool.yukuai.cn/api/notice
+
+4. 就业
+
+   GET http://myschool.yukuai.cn/api/job
+
+5. 社团
+
+   GET http://myschool.yukuai.cn/api/club
+
+注：不同分类的文章，在数据库中的区别只在于 fid (ForumId) 不同
+
+*** 获取文章详情
+参数说明：tid=文章id (ThreadId)
+
+GET http://myschool.yukuai.cn/api/article?tid=1
+
+返回值：
+#+begin_src js
+{
+  data: [
+    {
+      pid: 1,
+      subject: "Mocha 我们班上的情况 Thread - 1409300476",
+      subjectimg: "http://img10.360buyimg.com/da/jfs/t205/216/3023075999/62098/12d823d1/53db0b2eN7e85077f.jpg",
+      message: "Mocha 我们班上的情况 正文(主楼).",
+      dateline: 1409300479,
+      first: true,
+      position: 1,
+      fid: 9,
+      tid: 1,
+      authorid: 8,
+      author: {
+        uid: 8,
+        username: "Mocha测试账号",
+        email: "mocha@yukuai.cn",
+        fid: 9
+      }
+    },
+    {
+      pid: 9,
+      anonymous: true,
+      subjectimg: "mocha-test.jpg",
+      message: "Mocha Test Comment.",
+      dateline: 1409300604,
+      first: false,
+      position: 2,
+      fid: 9,
+      tid: 1,
+      authorid: 8,
+      author: {
+        uid: 8,
+        username: "Mocha测试账号",
+        email: "mocha@yukuai.cn",
+        fid: 9
+      }
+    }
+  ],
+  meta: {
+    tid: 1,
+    subject: "Mocha 我们班上的情况 Thread - 1409300476",
+    subjectimg: "http://img10.360buyimg.com/da/jfs/t205/216/3023075999/62098/12d823d1/53db0b2eN7e85077f.jpg",
+    dateline: 1409300479,
+    lastpost: 1409300692,
+    views: 3,
+    replies: 3,
+    maxposition: 4,
+    original: "mocha",
+    fid: 9,
+    authorid: 8,
+    lastposterid: 8,
+    id: 1
+  }
+}
+#+end_src
+
+** 互动
+*** 新建话题
+
+POST http://myschool.yukuai.cn/api/articles
+
+POST 数据格式：
+#+begin_src js
+{
+  "subject": "主题"
+  "message": "正文"
+  "anonymous": 0
+  "subjectimg": "http://img.uni.yukuai.cn/upload/fb/848860.jpg"
+  "fid": 98
+}
+
+anonymous: 1，匿名；0，不匿名
+subjectimg: 主题图片地址
+
+不设置 fid 时，为发送全班话题（需先关联用户到班级--现在无此页面，暂在数据库里关联）。
+  fid=98：发送全校话题。
+  fid=2：发送新闻文章。
+  fid=3：发送通知文章。
+  fid=4：发送社团文章。
+  fid=5：发送就业文章。
+#+end_src
+
+返回值：
+#+begin_src js
+{
+  data: {
+    pid: 53
+    anonymous: false,
+    subjectimg: 'http://img.uni.yukuai.cn/upload/fb/848860.jpg',
+    subject: '正文'
+    message: '评论',
+    dateline: 1409296791,
+    first: true,
+    position: 1,
+    fid: 2,
+    tid: 1,
+    authorid: 8,
+    author: {
+      uid: 8,
+      username: 'Mocha测试账号',
+      email: 'mocha@yukuai.cn',
+      fid: 9
+    }
+  }
+}
+#+end_src
+
+说明：
+1. 参见 1.3 设置数据格式
+2. 本接口需要登录，参见 2.2 设置 token
+
+
+*** 评论话题
+
+POST http://myschool.yukuai.cn/api/comment?tid=25
+
+参数说明：tid=文章id (ThreadId)
+
+POST 数据格式：
+#+begin_src js
+{
+  "message": "评论"
+  "anonymous": 0
+  "subjectimg": "http://img.uni.yukuai.cn/upload/fb/848860.jpg"
+}
+
+anonymous: 1，匿名；0，不匿名
+subjectimg: 主题图片地址
+#+end_src
+
+返回值：
+#+begin_src js
+{
+  data: {
+    pid: 53
+    anonymous: true,
+    subjectimg: 'http://img.uni.yukuai.cn/upload/fb/848860.jpg',
+    message: '评论',
+    dateline: 1409296791,
+    first: false,
+    position: 1,
+    fid: 2,
+    tid: 1,
+    authorid: 8,
+    author: {
+      uid: 8,
+      username: 'Mocha测试账号',
+      email: 'mocha@yukuai.cn',
+      fid: 9
+    }
+  }
+}
+#+end_src
+
+说明：
+1. 参见 1.3 设置 POST 数据格式
+2. 本接口需要登录，参见 2.2 设置 token
+
+*** 我的话题
+
+GET http://myschool.yukuai.cn/api/my/articles
+
+返回值：和文章列表类接口相同。
+
+说明：
+1. 本接口需要登录，参见 2.2 设置 token
+
+*** 全班话题
+
+GET http://myschool.yukuai.cn/api/klass/articles
+
+返回值：和文章列表类接口相同。
+
+说明：
+1. 本接口需要登录，参见 2.2 设置 token
+
+*** 全校话题
+
+GET http://myschool.yukuai.cn/api/school/articles
+
+返回值：和文章列表类接口相同。
+
+说明：
+1. 本接口需要登录，参见 2.2 设置 token
+
+*** 话题详情（同文章详情）
+
+参数说明：tid=文章id (ThreadId)
+
+GET http://myschool.yukuai.cn/api/article?tid=1
+
+** 课程表接口
+
+说明：课程表现为测试用数据，以后和教务系统打通后，格式尽可能不变。
+
+GET http://myschool.yukuai.cn/api/course/schedule
+
+参数：
+
+1. uid: 用户id （班级 id？）
+
+返回值：
+
+1. week: 第几周
+2. start, end: schedule 中课程表的开始、结束时间
+3. schedule: 课程安排数组
+4. classroomLid: 教室的 LocationId，可选值。如有值则可在地图中显示
+5. sn: 课程占用课时数
+
+示例：
+#+begin_src js
+{
+  data: {
+    week: 8,
+    start: "20140519",
+    end: "20140523",
+    schedule: [
+      {
+        date: "20140519",
+        weekday: 1
+        sn: "1-2"
+        classhour: "周一 1-2 节",
+        name: "剑桥商务英语",
+        classroom: "第六教学楼 308",
+        classroomLid: 308,
+        teacher: "孟建国",
+        teacherUid: 24,
+      },
+      {
+        date: "20140519",
+        weekday: 1
+        sn: "3-4"
+        classhour: "周一 1-2 节",
+        name: "市场营销实务",
+        classroom: "第六教学楼 308",
+        classroomLid: 308,
+        teacher: "孟建国",
+        teacherUid: 24,
+      }
+    ]
+  }
+}
+#+end_src
+
+* 数据字典（数据库结构）
+
+1. 时间均使用 unix timestamp 形式，在数据库中保存为 10 位整数；
+2. Boolean 类型在数据库用整数保存，且均用 0 表示否，1 表示 是。
+
+** 用户
+
+表中所有人相关的主体，比如教师，作者，都引用自本用户表。
+
+*** user
+| 字段名        | 注释             | 示例 |
+|---------------+------------------+------|
+| uid           |                  |      |
+| username      |                  |      |
+| password      |                  |      |
+| email         |                  |      |
+| regdate       | 注册时间         |      |
+| regip         | 注册时所用IP     |      |
+| lastloginip   | 最近一次登录用IP |      |
+| lastlogintime | 最近一次登录时间 |      |
+
+** 标签
+标签设计为通用机制。即所有主体的标签，都通过下面两个表来保存。
+
+查询频繁时为提高查询效率，可将标签冗余保存在表内。如 Post 表的 tags 字段。
+
+*** tag
+| 字段名  | 注释          | 示例 |
+|---------+---------------+------|
+| tagid   |               |      |
+| tagname | 标签名        |      |
+| status  | 状态，0为正常 |      |
+
+*** tagitem
+| 字段名 | 注释             | 示例 |
+|--------+------------------+------|
+| tagid  |                  |      |
+| itemid | 被标签对象的id   |      |
+| idtype | 被标签对象的类型 | tid  |
+
+** 地理位置
+*** location
+| 字段名 | 注释 | 示例 |
+|--------+------+------|
+| lid    |      |      |
+| name   | 地名 |      |
+| lng    | 经度 |      |
+| lat    | 纬度 |      |
+| rem    | 注释 |      |
+
+** 文章、资讯、话题
+
+资讯、话题，或更多类似形式的主体，都用下面三个表来表示。
+
+设计为论坛形式。用forum来表示分类,如通知fid=1, 就业fid=2。
+
+thread 表为查询消息列表时所用，不含正文。
+
+文章正文，及可能的评论、回复，在 Post 表保存。
+
+*** forum
+| 字段名 | 注释       | 示例 |
+|--------+------------+------|
+| fid    | 论坛id     |      |
+| name   | 论坛名     |      |
+| fup    | 上层节点id |      |
+
+*** thread
+| 字段名       | 注释         | 示例 |
+|--------------+--------------+------|
+| tid          | thread id    |      |
+| fid          | 论坛 id      |      |
+| authorid     | 作者         |      |
+| subject      | 主题         |      |
+| dateline     | 发表时间     |      |
+| lastpost     | 最后回复时间 |      |
+| lastposterid | 最后回复人   |      |
+| views        | 浏览次数     |      |
+| replies      | 回复数       |      |
+| maxposition  | 楼层数       |      |
+| original     | 来源           |      |
+
+*** post
+| 字段名    | 注释                          | 示例                  |
+|-----------+-------------------------------+-----------------------|
+| pid       | post id                       |                       |
+| fid       | 论坛id                        |                       |
+| tid       | thread id                     |                       |
+| authorid  | 作者                          |                       |
+| anonymous | 是否匿名                      | 0：否，1：是          |
+| subject   | 主题                          |                       |
+| message   | 正文                          |                       |
+| dateline  | 发表时间                      |                       |
+| deletedat | 删除时间                      |                       |
+| useip     | 发表时用ID                    |                       |
+| port      | 发表时用端口                  |                       |
+| first     | 是第一楼吗？                  | 0：否，1：是          |
+| position  | 楼层数                        |                       |
+| tags      | 标签值：tagid,tagname,space.. | 1,莫民奇妙 2,盖世英雄 |
+
+** 课程
+*** course
+| 字段名    | 注释     | 示例 |
+|-----------+----------+------|
+| cid       |          |      |
+| name      | 课程名称 |      |
+| rem       | 备注     |      |
+| teacherid | 主讲老师 |      |
+
+*** lecture
+| 字段名 | 注释     | 示例 |
+|--------+----------+------|
+| id     |          |      |
+| day    | 日期     |      |
+| start  | 开始时间 |      |
+| end    | 结束时间 |      |
+| rem    | 备注     |      |
+
+*** course_playlist
+| 字段名    | 注释              | 示例 |
+|-----------+-------------------+------|
+| id        |                   |      |
+| cid       | 讲什么：课程      |      |
+| teacherid | 谁讲：主讲教师ID  |      |
+| lectureid | 时间：课时ID      |      |
+| lid       | 地点：location id |      |
+| rem       | 备注              |      |
+
+* 彩蛋
+
+1. 本 API 基于 [[http://loopback.io/][LoopBack]]，支持 LoopBack 提供的所有 REST 调用。
+2. LoopBack 提供了 Android 和 iOS 开发包，欢迎使用。

@@ -1,0 +1,152 @@
+#+OPTIONS: ^:nil
+#+TITLE: Smarty 模板运行时编译阻塞解决方案 (Rev3)
+
+
+* 问题
+
+线上模板更新时，由于 smarty 的运行时编译机制，导致短期内大量模板需要重新编译，从而占用过量 php-fpm 进程，造成阻塞。
+
+
+* 解决
+
+*Smarty 模板预编译* : 把模板上传到分发服务器后，在分发机上完整编译 smarty 模板后，分发部署到其它服务器。
+
+* 实施
+
+** 方案一：手动编译，同步结果
+
+1. 此方案目前实现代价最小；
+2. 相关脚本在 t6 (192.168.1.63) 服务器：
+   + /data/www/html/zbjv6/Makefile
+   + /data/www/html/zbjv6/zbj_dist
+3. 关闭线上 smarty 的 $compile_check （设置为 FALSE）。
+   修改 SGui.class.php, function getSmartyEngine:
+#+begin_src php
+$smarty->template_dir 	= SlightPHP::$appDir.DIRECTORY_SEPARATOR."templates";
+$smarty->compile_check 	= FALSE;
+#+end_src
+
+
+*编译 Smarty 模板:*
+#+begin_src sh
+# 注意：以下命令请用 www 用户执行，以免生成的 templates_c 目录无法访问
+
+cd /data/www/html/zbjv6/
+
+# 1. 指定需要编译的项目，多项目之间用空格分隔
+
+vi zbj_dist/smarty_precompile.sh
+project="login shop www boss"
+
+# 2. 编译
+#    第一次运行时，请确定生成的 templates_c 位置是否正确
+#    默认在 项目/app/templates_c， 如 login/app/templates_c/
+make before-deploy
+#+end_src
+
+** 方案二：服务器目录快照（未来可能用到）
+*** 准备工作
+
+1. 准备分发服务器 dist，准备部署服务器 web1, web2, web3...
+
+2. 准备部署脚本，设定部署钩子如下：
+
+   | before-upload | 在上传文件到分发机前执行，如建立相关目录           |
+   | after-upload  | 在上传文件到分发机完成后执行                       |
+   | before-deploy | 在分发部署前执行，如编译 smarty 模板               |
+   | after-deploy  | 在分发部署后执行，如执行设立特定配置文件、单元测试 |
+   | test-pass     | 在测试通过后执行，如切换工作目录                   |
+   | test-failed   | 在测试失败后执行                                   |
+
+3. 设立 dist 和各部署服务器上的目录结构为：
+
+   + /data/www/html/zbjv6/2014-11-01-1000
+   + /data/www/html/zbjv6/2014-11-02-1000
+   + /data/www/html/zbjv6/2014-11-03-1000
+   + /data/www/html/zbjv6/using -> /data/www/html/zbjv6/2014-11-03-1000
+
+*** 具体操作
+
+1. *make before-upload* : 在 dist 上创建临时目录，如 /data/www/html/zbjv6/2014-12-4-0922。
+
+2. 把所有项目同步到临时目录
+
+3. *make after-upload* : 执行编译 smarty 等动作
+
+4. 可选执行 *make test*，进行分发前测试
+
+5. *make deploy*: 分发文件到各部署服务器
+
+6. *make after-deploy*: 更改 using 链接到临时目录，完成上线切换。如有问题，通过更改 using 链接可即时切换为上一个稳定版。
+
+可选：各项目也包含 Makefile, 可执行自定义的钩子，如特定的 make before-deploy 动作
+
+*注意：*
+
+1. 请确定 template_c 目录在正确的地方生成。
+2. 编译脚本的成功运行依赖以下假定：
+   + 项目根目录存在 config.php
+
+** 问题
+
+- Q: 模板里存在两种分隔符 :: A: 使用字符串查找自动判断分隔符
+
+* 附录
+
+** Smarty 预编译脚本
+#+begin_src sh
+#!/usr/bin/env bash
+project="login boss u www"
+
+for pj in $project
+do
+    cd $pj && php ../zbj_dist/smarty_precompile.php && cd ..
+done
+#+end_src
+
+#+begin_src php
+<?php
+require_once("./config.php");
+
+SlightPHP::setAppDir("app");
+
+$SGui = new SGui();
+
+$smarty = $SGui->getSmartyEngine();
+
+if (defined('SMARTY_TPLS') && $smarty->getTemplateDir() != SMARTY_TPLS && is_dir(SMARTY_DIR)) {
+    $smarty->setTemplateDir(SMARTY_TPLS);
+}
+
+require_once("../zbj_dist/lib/functions.php");
+require_once("../zbj_dist/lib/zbj_smarty_internal_utility.php");
+$util = new ZBJ_Smarty_Internal_Utility($smarty);
+
+$util->compileAllTemplates('.html', true);
+$util->compileAllTemplates('.tpl', true);
+#+end_src
+
+*模板判断*
+#+begin_src php
+<?php
+function predictDelimiter($string) {
+    if (strpos($string, '{%') !== FALSE ) return '{%';
+    if (strpos($string, '{/') !== FALSE ) return '{/';
+    return FALSE;
+}
+
+// 判断模板文件使用 '{/', '{%' 哪一种分隔符
+function getDelimiter($file) {
+    $handle = @fopen($file, "r");
+    if ($handle) {
+        while (($buffer = fgets($handle, 4096)) !== false) {
+            $delimiter = predictDelimiter($buffer);
+            if($delimiter !== FALSE) {
+                fclose($handle);
+                return $delimiter;
+            }
+        }
+    }
+    return '{/';
+}
+#+end_src

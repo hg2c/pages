@@ -1,0 +1,13 @@
+brew install nvm
+nvm ls-remote
+nvm install v10.38
+npm install -g cnpm --registry=https://registry.npm.taobao.org
+cnpm install -g npm cnpm node-gyp grunt-cli bower coffee-script gulp
+
+
+Install
+
+$ npm install -g node-inspector
+Start
+
+$ node-debug app.js

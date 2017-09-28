@@ -1,0 +1,16 @@
+并行编程
+
+Fork/Join
+
+递归拆分，工作窃取 work-stealing
+任务挪移，迁移
+
+https://www.ibm.com/developerworks/cn/java/j-jtp11137.html
+
+MapReduce
+
+One key difference is that F-J seems to be designed to work on a single Java VM, while M-R is explicitly designed to work on a large cluster of machines. These are very different scenarios.
+
+F-J offers facilities to partition a task into several subtasks, in a recursive-looking fashion; more tiers, possibility of 'inter-fork' communication at this stage, much more traditional programming. Does not extend (at least in the paper) beyond a single machine. Great for taking advantage of your eight-core.
+
+M-R only does one big split, with the mapped splits not talking between each other at all, and then reduces everything together. A single tier, no inter-split communication until reduce, and massively scalable. Great for taking advantage of your share of the cloud.

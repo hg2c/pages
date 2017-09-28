@@ -1,0 +1,68 @@
+---
+deploy: yk
+layout: post
+title: "愉快网约吃饭VO设计"
+date: 2013-01-15 15:22
+comments: true
+categories: yk-app-yue
+---
+#+OPTIONS: ^:nil
+
+图例
+
+| 所在列 | 符号       | 说明                           |
+|--------+------------+--------------------------------|
+| 类型   | (B)        | 属性A为B的别名                 |
+|        | parent::id | 表示继承自父类的id属性         |
+|        | enum(0-4)  | 表示属性取值范围为 [0,1,2,3,4] |
+
+
+** VO_User
+
+| 属性          | 类型    | 数据库字段                 | 字段类型     | 备注                              | 例                               |
+|---------------+---------+----------------------------+--------------+-----------------------------------+----------------------------------|
+| id            | (pin)   |                            |              | 主键                              |                                  |
+| pin           | string  | yukuai.site_user.userpin   | varchar(50)  | 登录名，常用作用户主键，查询等    | keke                             |
+| uid           | string  |                            |              | 无数据库存储，暂使用 md5(pin)     | 5e543256c480ac577d30f76f9120eb74 |
+|               | int     | yukuai_user.global_user.id | int(11)      | 数字主键，已弃用。                | 0                                |
+| nickname      | string  | yukuai.site_user.nickname  | varchar(50)  | 昵称，显示名。如未设置，则显示 id | 可可                             |
+| avatar        | string  | yukuai.site_user.user_pic  | varchar(200) |                                   |                                  |
+|               |         |                            |              |                                   |                                  |
+|---------------+---------+----------------------------+--------------+-----------------------------------+----------------------------------|
+| realname      |         |                            |              | 真名，如未设置，则显示 nickname   | 曾轶可                           |
+| realname_auth | boolean |                            |              | 真名是否已认证 [未验证，已验证]   | 0                                |
+| mobile        |         |                            |              | 手机号码                          | 13220202020                      |
+| mobile_auth   | boolean |                            |              | 手机是否已认证 [未验证，已验证]   | 0                                |
+
+
+** VO_Webim_User extends VO_User
+
+| 属性    | 类型             | 字段类型 | 备注                                                            | 例 |
+|---------+------------------+----------+-----------------------------------------------------------------+----|
+| uid     | string           |          | md5(parent::pin)；无合适 uid 的临时解决方案。                   |    |
+| jid     | (parent::pin)    |          | id 的别名，JID的用户名称部分，用于登录 xmpp 服务器              |    |
+| group   | enum(0-4)        |          | [我的关注，正在约的，约过的，我的粉丝，我的访客]                |  0 |
+| nick    | parent::nickname |          |                                                                 |    |
+| avatar  | parent::avatar   |          |                                                                 |    |
+| status  | enum(0-1)        |          | 在线状态，从 cache 读取。cache::get(webim-status-$jid)          |  1 |
+| unreads | int              |          | 离线消息数量，从 cache 读取。cache::get(webim-num-offmsg-$jid); |  1 |
+
+
+
+** Memcache 键值对应表
+
+注：下表中的 $user = md5(JID_LocalName) = md5(userpin)。
+
+| 键                           | 值       | 说明                                    | 示例                                                 |
+|------------------------------+----------+-----------------------------------------+------------------------------------------------------|
+| webim-num-offmsg-$user       | int      | $user 收到的离线消息数量                | webim-num-offmsg-a9542bb104fe3f4d562e1d275e03f5ba: 9 |
+| webim-status-$user           | int(0,1) | $user 如在线: 1，否则: 0                | webim-status-jack: 1                                 |
+|------------------------------+----------+-----------------------------------------+------------------------------------------------------|
+| webim-num-offmsg-$user-$from | int      | 弃用。$from 发送给 $user 的离线消息数量 | webim-num-offmsg-jack-rose : 7                       |
+|                              |          |                                         |                                                      |
+| im-sub:yukuai.com            | sub      | 暂接受注册消息                                 |                                                      |
+| roster:yukuai.com            | set      | (user1, user2)                          |                                                      |
+| usernames:yukuai.com         | list     | [user1, user2]                          |                                                      |
+| passwords:yukuai.com         | hash     | {user: password}                        |                                                      |
+| offmsg-length:yukuai.com     | hash     | {user: length}                          |                                                      |
+|                              |          |                                         |                                                      |

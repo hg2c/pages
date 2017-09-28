@@ -1,0 +1,478 @@
+* mysql
+A "/etc/my.cnf" from another install may interfere with a Homebrew-built
+server starting up correctly.
+
+To connect:
+    mysql -uroot
+
+To have launchd start mysql at login:
+    ln -sfv /usr/local/opt/mysql/*.plist ~/Library/LaunchAgents
+Then to load mysql now:
+    launchctl load ~/Library/LaunchAgents/homebrew.mxcl.mysql.plist
+Or, if you don't want/need launchctl, you can just run:
+    mysql.server start
+
+WARNING: launchctl will fail when run under tmux.
+
+* php
+brew untap homebrew/dupes
+brew untap homebrew/versions
+brew untap homebrew/homebrew-php
+
+brew tap homebrew/dupes
+brew tap homebrew/versions
+brew tap homebrew/homebrew-php
+
+brew install php54 --with-imap --with-tidy --with-debug --with-mysql --with-fpm
+
+➜  brew install php54 --with-imap --with-tidy --with-debug --with-mysql --with-fpm
+==> Installing php54 from homebrew/homebrew-php
+==> Installing dependencies for php54: libpng, freetype, gettext, homebrew/dupes/tidy, homebrew/dupes/zlib, icu4c, imap-uw, jpeg, unixodbc
+==> Installing php54 dependency: libpng
+==> Downloading https://homebrew.bintray.com/bottles/libpng-1.6.17.yosemite.bottle.tar.gz
+######################################################################## 100.0%
+==> Pouring libpng-1.6.17.yosemite.bottle.tar.gz
+🍺  /usr/local/Cellar/libpng/1.6.17: 17 files, 1.2M
+==> Installing php54 dependency: freetype
+==> Downloading https://homebrew.bintray.com/bottles/freetype-2.5.5.yosemite.bottle.tar.gz
+######################################################################## 100.0%
+==> Pouring freetype-2.5.5.yosemite.bottle.tar.gz
+🍺  /usr/local/Cellar/freetype/2.5.5: 60 files, 2.6M
+==> Installing php54 dependency: gettext
+==> Downloading https://homebrew.bintray.com/bottles/gettext-0.19.4.yosemite.bottle.tar.gz
+######################################################################## 100.0%
+==> Pouring gettext-0.19.4.yosemite.bottle.tar.gz
+==> Caveats
+This formula is keg-only, which means it was not symlinked into /usr/local.
+
+Mac OS X provides similar software, and installing this software in
+parallel can cause all kinds of trouble.
+
+OS X provides the BSD gettext library and some software gets confused if both are in the library path.
+
+Generally there are no consequences of this for you. If you build your
+own software and it requires this formula, you'll need to add to your
+build variables:
+
+    LDFLAGS:  -L/usr/local/opt/gettext/lib
+    CPPFLAGS: -I/usr/local/opt/gettext/include
+
+==> Summary
+🍺  /usr/local/Cellar/gettext/0.19.4: 1920 files, 21M
+==> Installing php54 dependency: homebrew/dupes/tidy
+==> Downloading https://homebrew.bintray.com/bottles-dupes/tidy-20090325.yosemite.bottle.tar.gz
+######################################################################## 100.0%
+==> Pouring tidy-20090325.yosemite.bottle.tar.gz
+🍺  /usr/local/Cellar/tidy/20090325: 10 files, 940K
+
+==> Installing php54 from homebrew/homebrew-php
+==> Downloading https://www.php.net/get/php-5.4.39.tar.bz2/from/this/mirror
+######################################################################## 100.0%c
+==> ./configure --prefix=/usr/local/Cellar/php54/5.4.39 --localstatedir=/usr/local/var --sysconfdir=/usr/local/etc/php/5.4 --with-config-file-path=/usr/local/
+==> make
+==> make install
+==> /usr/local/Cellar/php54/5.4.39/bin/pear config-set php_ini /usr/local/etc/php/5.4/php.ini system
+==> Caveats
+To enable PHP in Apache add the following to httpd.conf and restart Apache:
+    LoadModule php5_module    /usr/local/opt/php54/libexec/apache2/libphp5.so
+
+The php.ini file can be found in:
+    /usr/local/etc/php/5.4/php.ini
+✩✩✩✩ PEAR ✩✩✩✩
+
+If PEAR complains about permissions, 'fix' the default PEAR permissions and config:
+    chmod -R ug+w /usr/local/Cellar/php54/5.4.39/lib/php
+    pear config-set php_ini /usr/local/etc/php/5.4/php.ini system
+
+✩✩✩✩ Extensions ✩✩✩✩
+
+If you are having issues with custom extension compiling, ensure that
+you are using the brew version, by placing /usr/local/bin before /usr/sbin in your PATH:
+
+      PATH="/usr/local/bin:$PATH"
+
+PHP54 Extensions will always be compiled against this PHP. Please install them
+using --without-homebrew-php to enable compiling against system PHP.
+
+✩✩✩✩ PHP CLI ✩✩✩✩
+
+If you wish to swap the PHP you use on the command line, you should add the following to ~/.bashrc,
+~/.zshrc, ~/.profile or your shell's equivalent configuration file:
+
+      export PATH="$(brew --prefix homebrew/php/php54)/bin:$PATH"
+
+✩✩✩✩ FPM ✩✩✩✩
+
+To launch php-fpm on startup:
+    mkdir -p ~/Library/LaunchAgents
+    cp /usr/local/opt/php54/homebrew.mxcl.php54.plist ~/Library/LaunchAgents/
+    launchctl load -w ~/Library/LaunchAgents/homebrew.mxcl.php54.plist
+
+The control script is located at /usr/local/opt/php54/sbin/php54-fpm
+
+OS X 10.8 and newer come with php-fpm pre-installed, to ensure you are using the brew version you need to make sure /usr/local/sbin is before /usr/sbin in your PATH:
+
+  PATH="/usr/local/sbin:$PATH"
+
+You may also need to edit the plist to use the correct "UserName".
+
+Please note that the plist was called 'homebrew-php.josegonzalez.php54.plist' in old versions
+of this formula.
+
+To have launchd start php54 at login:
+    ln -sfv /usr/local/opt/php54/*.plist ~/Library/LaunchAgents
+Then to load php54 now:
+    launchctl load ~/Library/LaunchAgents/homebrew.mxcl.php54.plist
+
+WARNING: launchctl will fail when run under tmux.
+==> Summary
+🍺  /usr/local/Cellar/php54/5.4.39: 494 files, 54M, built in 4.6 minutes
+
+* nginx
+➜  ~  brew install nginx
+==> Downloading http://nginx.org/download/nginx-1.4.4.tar.gz
+######################################################################## 100.0%
+==> ./configure --prefix=/usr/local/Cellar/nginx/1.4.4 --with-http_ssl_module --with-pcre --with-ipv6 --sbin-path=/usr/local/Cellar/nginx/1.4.4/bin/nginx --with-cc-
+==> make
+==> make install
+==> Caveats
+Docroot is: /usr/local/var/www
+
+The default port has been set in /usr/local/etc/nginx/nginx.conf to 8080 so that
+nginx can run without sudo.
+
+To have launchd start nginx at login:
+    ln -sfv /usr/local/opt/nginx/*.plist ~/Library/LaunchAgents
+Then to load nginx now:
+    launchctl load ~/Library/LaunchAgents/homebrew.mxcl.nginx.plist
+Or, if you don't want/need launchctl, you can just run:
+    nginx
+
+WARNING: launchctl will fail when run under tmux.
+==> Summary
+🍺  /usr/local/Cellar/nginx/1.4.4: 7 files, 876K, built in 42 seconds
+
+nginx -c /luo/opt/nginx-boilerplate/src/nginx.conf
+
+* autojump
+
+➜  vendor  brew install autojump
+==> Downloading https://github.com/joelthelion/autojump/archive/release-v21.6.9.tar.gz
+######################################################################## 100.0%
+==> Caveats
+Add the following line to your ~/.bash_profile or ~/.zshrc file (and remember
+to source the file to update your current session):
+  [[ -s `brew --prefix`/etc/autojump.sh ]] && . `brew --prefix`/etc/autojump.sh
+
+zsh completion has been installed to:
+  /usr/local/share/zsh/site-functions
+==> Summary
+🍺  /usr/local/Cellar/autojump/21.6.9: 11 files, 104K, built in 16 seconds
+
+* gearman
+➜  ~  brew install gearman
+==> Installing gearman dependency: boost
+==> Downloading https://downloads.sf.net/project/machomebrew/Bottles/boost-1.55.0.mavericks.bottle.1.tar.gz
+######################################################################## 100.0%
+==> Pouring boost-1.55.0.mavericks.bottle.1.tar.gz
+🍺  /usr/local/Cellar/boost/1.55.0: 10040 files, 512M
+==> Installing gearman
+==> Downloading https://launchpad.net/gearmand/1.2/1.1.9/+download/gearmand-1.1.9.tar.gz
+######################################################################## 100.0%
+==> Patching
+patching file libgearman-1.0/gearman.h
+==> ./configure --prefix=/usr/local/Cellar/gearman/1.1.9
+==> make install
+==> Caveats
+To have launchd start gearman at login:
+    ln -sfv /usr/local/opt/gearman/*.plist ~/Library/LaunchAgents
+Then to load gearman now:
+    launchctl load ~/Library/LaunchAgents/homebrew.mxcl.gearman.plist
+Or, if you don't want/need launchctl, you can just run:
+    gearmand -d
+
+WARNING: launchctl will fail when run under tmux.
+==> Summary
+🍺  /usr/local/Cellar/gearman/1.1.9: 208 files, 2.2M, built in 7.8 minutes
+
+* redis
+➜  yk-sms git:(master) ✗ brew install redis
+==> Downloading https://downloads.sf.net/project/machomebrew/Bottles/redis-2.8.3.mavericks.bottle.tar.gz
+######################################################################## 100.0%
+==> Pouring redis-2.8.3.mavericks.bottle.tar.gz
+==> Caveats
+To have launchd start redis at login:
+    ln -sfv /usr/local/opt/redis/*.plist ~/Library/LaunchAgents
+Then to load redis now:
+    launchctl load ~/Library/LaunchAgents/homebrew.mxcl.redis.plist
+Or, if you don't want/need launchctl, you can just run:
+    redis-server /usr/local/etc/redis.conf
+
+WARNING: launchctl will fail when run under tmux.
+==> Summary
+🍺  /usr/local/Cellar/redis/2.8.3: 10 files, 1.2M
+
+* php54-gearman
+➜  yk-sms git:(master) ✗ brew install php54-gearman
+==> Downloading http://pecl.php.net/get/gearman-1.1.2.tgz
+######################################################################## 100.0%
+==> PHP_AUTOCONF="/usr/local/opt/autoconf/bin/autoconf" PHP_AUTOHEADER="/usr/local/opt/autoconf/bin/autoheader" /usr/local/Cellar/php54/5.4.23/bin/phpize
+==> ./configure --prefix=/usr/local/Cellar/php54-gearman/1.1.2 --with-php-config=/usr/local/Cellar/php54/5.4.23/bin/php-config --with-gearman=/usr/local/opt/gearma
+==> make
+==> Caveats
+To finish installing gearman for PHP 5.4:
+  * /usr/local/etc/php/5.4/conf.d/ext-gearman.ini was created,
+    do not forget to remove it upon extension removal.
+  * Validate installation via one of the following methods:
+  *
+  * Using PHP from a webserver:
+  * - Restart your webserver.
+  * - Write a PHP page that calls "phpinfo();"
+  * - Load it in a browser and look for the info on the gearman module.
+  * - If you see it, you have been successful!
+  *
+  * Using PHP from the command line:
+  * - Run "php -i" (command-line "phpinfo()")
+  * - Look for the info on the gearman module.
+  * - If you see it, you have been successful!
+==> Summary
+🍺  /usr/local/Cellar/php54-gearman/1.1.2: 5 files, 120K, built in 12 seconds
+
+* llvm
+➜  ~  brew install llvm
+==> Downloading http://llvm.org/releases/3.4/llvm-3.4.src.tar.gz
+######################################################################## 100.0%
+==> ./configure --prefix=/usr/local/Cellar/llvm/3.4 --enable-optimized --disable-bindings --enable-targets=host --enable-shared
+==> make
+==> make install
+==> Caveats
+Extra tools are installed in /usr/local/Cellar/llvm/3.4/share/llvm and /usr/local/Cellar/llvm/3.4/share/clang.
+
+If you already have LLVM installed, then "brew upgrade llvm" might not work.
+Instead, try:
+    brew rm llvm && brew install llvm
+
+This formula is keg-only, so it was not symlinked into /usr/local.
+
+Mac OS X already provides this software and installing another version in
+parallel can cause all kinds of trouble.
+
+Generally there are no consequences of this for you. If you build your
+own software and it requires this formula, you'll need to add to your
+build variables:
+
+    LDFLAGS:  -L/usr/local/opt/llvm/lib
+    CPPFLAGS: -I/usr/local/opt/llvm/include
+
+
+If you need Python to find the installed site-packages:
+  mkdir -p ~/Library/Python/2.7/lib/python/site-packages
+  echo '/usr/local/opt/llvm/lib/python2.7/site-packages' > ~/Library/Python/2.7/lib/python/site-packages/homebrew.pth
+==> Summary
+🍺  /usr/local/Cellar/llvm/3.4: 676 files, 63M, built in 11.8 minutes
+* couchdb
+
+couchdb 1.6.1_1
+==> Upgrading couchdb
+==> Downloading http://www.apache.org/dyn/closer.cgi?path=/couchdb/source/1.6.1/apache-couchdb-1.6.1.tar.gz
+Already downloaded: /Library/Caches/Homebrew/couchdb-1.6.1.tar.gz
+==> ./configure --prefix=/usr/local/Cellar/couchdb/1.6.1_1 --localstatedir=/usr/local/var --sysconfdir=/usr/local/etc --disable-init --with-erlang=/usr/local/lib/erlang/
+==> make
+==> make install
+==> Caveats
+To test CouchDB run:
+    curl http://127.0.0.1:5984/
+
+To have launchd start couchdb at login:
+    ln -sfv /usr/local/opt/couchdb/*.plist ~/Library/LaunchAgents
+Then to load couchdb now:
+    launchctl load ~/Library/LaunchAgents/homebrew.mxcl.couchdb.plist
+Or, if you don't want/need launchctl, you can just run:
+    couchdb
+
+WARNING: launchctl will fail when run under tmux.
+==> Summary
+🍺  /usr/local/Cellar/couchdb/1.6.1_1: 636 files, 16M, built in 66 seconds
+
+* php56
+
+brew install php56 --with-imap --with-tidy --with-debug --with-mysql --with-phpdbg --HEAD
+==> Installing php56 from homebrew/homebrew-php
+==> Installing dependencies for php56: re2c, flex, homebrew/versions/bison27
+==> Installing php56 dependency: re2c
+==> Downloading https://homebrew.bintray.com/bottles/re2c-0.14.2.yosemite.bottle.tar.gz
+######################################################################## 100.0%
+==> Pouring re2c-0.14.2.yosemite.bottle.tar.gz
+🍺  /usr/local/Cellar/re2c/0.14.2: 5 files, 364K
+==> Installing php56 dependency: flex
+==> Downloading https://homebrew.bintray.com/bottles/flex-2.5.39.yosemite.bottle.tar.gz
+######################################################################## 100.0%
+==> Pouring flex-2.5.39.yosemite.bottle.tar.gz
+==> Caveats
+This formula is keg-only, which means it was not symlinked into /usr/local.
+
+Mac OS X already provides this software and installing another version in
+parallel can cause all kinds of trouble.
+
+Some formulae require a newer version of flex.
+
+Generally there are no consequences of this for you. If you build your
+own software and it requires this formula, you'll need to add to your
+build variables:
+
+    LDFLAGS:  -L/usr/local/opt/flex/lib
+    CPPFLAGS: -I/usr/local/opt/flex/include
+
+==> Summary
+🍺  /usr/local/Cellar/flex/2.5.39: 45 files, 2.0M
+==> Installing php56 dependency: homebrew/versions/bison27
+==> Downloading https://homebrew.bintray.com/bottles-versions/bison27-2.7.1.yosemite.bottle.1.tar.gz
+######################################################################## 100.0%
+==> Pouring bison27-2.7.1.yosemite.bottle.1.tar.gz
+==> Caveats
+This formula is keg-only, which means it was not symlinked into /usr/local.
+
+Mac OS X already provides this software and installing another version in
+parallel can cause all kinds of trouble.
+
+Some formulae require a newer version of bison.
+
+Generally there are no consequences of this for you. If you build your
+own software and it requires this formula, you'll need to add to your
+build variables:
+
+    LDFLAGS:  -L/usr/local/opt/bison27/lib
+
+==> Summary
+🍺  /usr/local/Cellar/bison27/2.7.1: 36 files, 1.7M
+
+==> Installing php56
+==> Cloning https://github.com/php/php-src.git
+Cloning into '/Library/Caches/Homebrew/php56--git'...
+remote: Counting objects: 17537, done.
+remote: Compressing objects: 100% (14788/14788), done.
+remote: Total 17537 (delta 3478), reused 11754 (delta 2580), pack-reused 0
+Receiving objects: 100% (17537/17537), 19.33 MiB | 436.00 KiB/s, done.
+Resolving deltas: 100% (3478/3478), done.
+Checking connectivity... done.
+Checking out files: 100% (17301/17301), done.
+==> Checking out branch PHP-5.6
+==> ./buildconf
+==> ./configure --prefix=/usr/local/Cellar/php56/HEAD --localstatedir=/usr/local/var --sysconfdir=/usr/local/etc/php/5.6 --with-config-file-path=/usr/local/etc/php/5.6 --with-config-file-scan-dir=/usr/local/etc/php/5.6/conf.d --mandir=/us
+==> make
+==> make install
+==> /usr/local/Cellar/php56/HEAD/bin/pear config-set php_ini /usr/local/etc/php/5.6/php.ini system
+==> Caveats
+To enable PHP in Apache add the following to httpd.conf and restart Apache:
+    LoadModule php5_module    /usr/local/opt/php56/libexec/apache2/libphp5.so
+
+The php.ini file can be found in:
+    /usr/local/etc/php/5.6/php.ini
+
+✩✩✩✩ PEAR ✩✩✩✩
+
+If PEAR complains about permissions, 'fix' the default PEAR permissions and config:
+    chmod -R ug+w /usr/local/Cellar/php56/HEAD/lib/php
+    pear config-set php_ini /usr/local/etc/php/5.6/php.ini system
+
+✩✩✩✩ Extensions ✩✩✩✩
+
+If you are having issues with custom extension compiling, ensure that
+you are using the brew version, by placing /usr/local/bin before /usr/sbin in your PATH:
+
+      PATH="/usr/local/bin:$PATH"
+
+PHP56 Extensions will always be compiled against this PHP. Please install them
+using --without-homebrew-php to enable compiling against system PHP.
+
+✩✩✩✩ PHP CLI ✩✩✩✩
+
+If you wish to swap the PHP you use on the command line, you should add the following to ~/.bashrc,
+~/.zshrc, ~/.profile or your shell's equivalent configuration file:
+
+      export PATH="$(brew --prefix homebrew/php/php56)/bin:$PATH"
+
+✩✩✩✩ FPM ✩✩✩✩
+
+To launch php-fpm on startup:
+    mkdir -p ~/Library/LaunchAgents
+    cp /usr/local/opt/php56/homebrew.mxcl.php56.plist ~/Library/LaunchAgents/
+    launchctl load -w ~/Library/LaunchAgents/homebrew.mxcl.php56.plist
+
+The control script is located at /usr/local/opt/php56/sbin/php56-fpm
+
+OS X 10.8 and newer come with php-fpm pre-installed, to ensure you are using the brew version you need to make sure /usr/local/sbin is before /usr/sbin in your PATH:
+
+  PATH="/usr/local/sbin:$PATH"
+
+You may also need to edit the plist to use the correct "UserName".
+
+Please note that the plist was called 'homebrew-php.josegonzalez.php56.plist' in old versions
+of this formula.
+
+To have launchd start php56 at login:
+    ln -sfv /usr/local/opt/php56/*.plist ~/Library/LaunchAgents
+Then to load php56 now:
+    launchctl load ~/Library/LaunchAgents/homebrew.mxcl.php56.plist
+
+WARNING: launchctl will fail when run under tmux.
+==> Summary
+🍺  /usr/local/Cellar/php56/HEAD: 501 files, 73M, built in 7.1 minutes
+
+* privoxy
+➜  hecarim git:(master) brew install privoxy
+==> Downloading https://homebrew.bintray.com/bottles/privoxy-3.0.23.yosemite.bottle.tar.gz
+######################################################################## 100.0%
+==> Pouring privoxy-3.0.23.yosemite.bottle.tar.gz
+==> Caveats
+To have launchd start privoxy at login:
+  ln -sfv /usr/local/opt/privoxy/*.plist ~/Library/LaunchAgents
+Then to load privoxy now:
+  launchctl load ~/Library/LaunchAgents/homebrew.mxcl.privoxy.plist
+Or, if you don't want/need launchctl, you can just run:
+  privoxy /usr/local/etc/privoxy/config
+
+WARNING: launchctl will fail when run under tmux.
+==> Summary
+🍺  /usr/local/Cellar/privoxy/3.0.23: 51 files, 1.7M
+
+* TIPS
+** PHP options need match
+
+Warning: PHP Startup: mcrypt: Unable to initialize module
+Module compiled with build ID=API20131226,NTS
+PHP    compiled with build ID=API20131226,NTS,debug
+These options need to match
+
+brew reinstall homebrew/php/php56-mcrypt --build-from-source
+
+** launchctl
+Bonus fact: this also fixes launchctl in tmux.
+brew install reattach-to-user-namespace
+* android
+==> Downloading https://dl.google.com/android/android-sdk_r24.4.1-macosx.zip
+######################################################################## 100.0%
+==> Downloading https://android.googlesource.com/platform/sdk/+/7859e2e738542baf96c15e6c8b50bbdb410131b0/bash_completion/adb.bash?format=TEXT
+
+curl: (28) Connection timed out after 5001 milliseconds
+Trying a mirror...
+==> Downloading https://raw.githubusercontent.com/Homebrew/patches/c3b801f/android-sdk/adb.bash
+######################################################################## 100.0%
+Warning: Could not fix /tmp/android-build-build-temp-74102/install-darwin-x86_64/lib/libz.1.dylib in /usr/local/Cellar/android-sdk/24.4.1/tools/qemu/darwin-x86_64/qemu-system-aarch64
+Warning: Could not fix /tmp/android-build-build-temp-74102/install-darwin-x86_64/lib/libz.1.dylib in /usr/local/Cellar/android-sdk/24.4.1/tools/qemu/darwin-x86_64/qemu-system-mips64el
+Warning: Could not fix /tmp/android-build-build-temp-74102/install-darwin-x86_64/lib/libz.1.dylib in /usr/local/Cellar/android-sdk/24.4.1/tools/qemu/darwin-x86_64/qemu-system-x86_64
+==> Caveats
+Now run the 'android' tool to install the actual SDK stuff.
+
+The Android-SDK is available at /usr/local/opt/android-sdk
+
+You will have to install the platform-tools and docs EVERY time this formula
+updates. If you want to try and fix this then see the comment in this formula.
+
+You may need to add the following to your .bashrc:
+  export ANDROID_HOME=/usr/local/opt/android-sdk
+
+Bash completion has been installed to:
+  /usr/local/etc/bash_completion.d
+==> Summary
+🍺  /usr/local/Cellar/android-sdk/24.4.1: 1476 files, 142M, built in 5.7 minutes

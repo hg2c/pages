@@ -1,0 +1,175 @@
+#+TITLE: 愉快网接口文档(Rev_6)
+
+* 愉快网接口
+
++ 优惠劵
+  | coupon/get    | 优惠劵领取 |
+  | coupon/valid  | 优惠劵验证 |
+  | coupon/add    | 优惠劵新建 |
+  | coupon/edit   | 优惠劵编辑 |
+  | coupon/list   | 优惠劵列表 |
+  | coupon/detail | 优惠劵详情 |
+
++ 餐厅
+  | restaurant/config  | 获取餐厅配置 |
+  | booking/restaurant | 预定餐厅     |
+  | cart/view          | 购物车查看   |
+  | cart/add           | 购物车添加   |
+  | cart/remove        | 购物车删除   |
+  | cart/checkout      | 购物车结账   |
+
++ 订单
+
++ 菜品
+  | dish/query  | 根据搜索条件列出菜品 |
+  | dish/add    | 添加菜品             |
+  | dish/remove | 删除菜品             |
+  | dish/edit   | 编辑菜品             |
+
++ 点菜
+  | menu/view   | 查看菜单 |
+  | menu/add    | 菜单添加 |
+  | menu/remove | 菜单删除 |
+
++ 桌台
+  | table/query  | 根据查询条件列出桌台 |
+  | table/add    | 添加桌台             |
+  | table/remove | 删除桌台             |
+  | table/edit   | 编辑桌台             |
+  |              |                      |
+
+* 优惠劵
+1. 领取
+   - coupon/get
+2. 验证
+3. 新建
+4. 编辑
+5. 详情
+6. 列表
+
+* xco
+** 获取餐厅配置接口
+
+返回餐厅配置
+
+*** 调用
+ykapi('restaurant/config' , rid [, uid]);
+
+*** 参数
++ rid :: 餐厅ID
++ uid :: 用户ID。即结果中的 RestaurantConfig.customer 节
+
+*** 返回值
+正常情况下，会返回餐厅配置对象 <RestaurantConfig>:
+
+#+INCLUDE: "assets/object/RestaurantConfig.json" src js
+
+*** 使用场景
+1. 判断商家是否可以在线选菜
+2. 判断商家是否支持在线选桌
+3. 获取客户预定时间配置，并计算出可预订时间
+
+
+** 获取餐厅预定令牌
+
+申请餐厅预定令牌，必须持有此令牌才能进行预定操作
+
+预定令牌，可以理解为购物车。
+
+*** 调用
+ykapi('restaurant/booking/token');
+
+*** 参数
+无
+
+*** 返回值
+正常情况下，会返回餐厅预定令牌ID。
+
+** 获取餐厅预定令牌状态
+
+返回指定令牌在餐厅的预定状态
+
+*** 调用
+ykapi('restaurant/booking/status', token);
+
+*** 参数
++ token :: 预定令牌
+
+*** 返回值
+正常情况下，会返回餐厅预定对象 <RestaurantBooking>:
+
+#+INCLUDE: "assets/object/RestaurantBooking.json" src js
+
+*** 使用场景
+判断客户是否已经选择过菜品;
+客户是否已经选择过房桌，如果选择过需要将选择的餐桌展示到前端；
+
+** 提交点菜、选座等各种预定信息。
+
+*** 调用
+ykapi('restaurant/booking/fill', token, restaurantBooking)
+
+*** 参数
++ token :: 预定令牌
++ restaurantBooking :: RestaurantBooking 对象
+
+#+INCLUDE: "assets/object/RestaurantBooking.json" src js
+
+
+*** 返回说明
+正常情况下，会返回餐厅预定结果 <RestaurantBookingResult>
+
+#+INCLUDE: "assets/object/RestaurantBookingResult.json" src js
+
+*** 使用场景
+提交客户选择菜品信息
+
+** 支付附在预定令牌上的预定订单
+
+待定
+
+*** 接口调用请求说明
+GET http://api.yukuai.com/restaurant/booking/pay?token=TOKEN
+
+*** 参数说明
+| 参数  | 是否必须 | 说明     |
+|-------+----------+----------|
+| token | 是       | 预定令牌 |
+
+*** 返回值
+
+*** 使用场景
+判断本订单是否已经提交过并生成订单号
+
+** 获取指定时段的桌台使用情况
+*** 接口
+ykapi('restaurant/table/status', time, period)
+
+*** 参数
++ time :: 时间字符串，如 '2013/12/25'
++ period :: 时段，取值范围(lunch|dinner)
+
+*** 返回值
+待定
+
+*** 使用场景
+获取本预定时间和餐段内，保留房信息和已预定房桌信息
+
+** 锁定桌台
+*** 接口
+ykapi('restaurant/table/lock', tid [, time])
+
+*** 参数
++ tid :: 桌台ID
++ time :: 锁定时间，默认 5 秒
+
+*** 返回值
+待定
+
+*** 使用场景
+选房桌时，调用接口临时锁定房桌
+
+* 附录
+
+** 返回值
+1. 现均为 JSON 格式

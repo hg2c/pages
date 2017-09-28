@@ -1,0 +1,151 @@
+#+OPTIONS: ^:nil
+
+#+BEGIN_HTML
+---
+deploy: yk
+layout: post
+title: "愉快网 ejabberd 配置指南"
+date: 2012-12-29 11:12
+comments: true
+categories: yk-im
+---
+#+END_HTML
+
+* 安装和设置
+
+** 安装 ejabberd
+
+1. yum install ejabberd
+
+2. 安装完成后，参考附录中范例配置 ejabberd.cfg
+
+   注意，不要马上启动 ejabberd (service ejabberd start)：
+
+   因为 ejabberd 第一次启动时，会记录这次 node 信息进入数据库，以后再
+   修改配置文件 ejabberdctl.cfg 文件中 ERLANG_NODE 变量，启动会报错。
+   使用如果需要绑定系统 hostname 作为 node 名，请在第一次启动前就完成
+   修改。
+
+3. 为 nginx 配置 ejabberd bosh 转向：
+#+begin_src sh
+location /bosh/ {
+    proxy_pass http://127.0.0.1:5280/http-bind/;
+    proxy_buffering off;
+    tcp_nodelay on;
+}
+#+end_src
+
+#+begin_src sh
+[root@luo ~]# ejabberdctl start
+[root@luo ~]# ejabberdctl status
+The node 'ejabberd@luo.cc' is starting with status: started
+ejabberd is not running in that node
+Check for error messages: /var/log/ejabberd/ejabberd.log
+or other files in that directory.
+#+end_src
+
+如果 ejabberd 无法启动并生成一个崩溃 dump, 表示有严重问题。你可以尝试
+使用命令 ejabberdctl live 启动ejabberd来查看由Erlang提供的出错信息并识
+别出确切的问题。
+
+#+begin_src sh
+[root@luo ~]# ejabberdctl register root localhost aaasss
+User admin@luo.cc successfully registered
+#+end_src
+
+注意，这里要先配置 ejabberd 的 host，使其包含 luo.cc ，否则不能注册管
+理员。
+/etc/ejabberd/ejabberd.cfg: {hosts, ["localhost", "luo.cc"]}.
+
+编辑ejabberd配置文件来给你创建的XMPP帐号赋予管理权限:
+{acl, admins, {user, "admin", "luo.cc"}}.
+{access, configure, [{allow, admins}]}.
+
+
+** 安装 ejabberd apns_offline 模块
+
+   apns_offline 是一个 ejabberd 模块，用于响应 XMPP 离线消息事件，并将该离线消息发送到 Python 脚本 send_to_apns.py 处理，由send_to_apns.py 负责实际推送动作。
+
+*** 安装 apns_offline 模块和 Python 依赖项
+
+#+octopress include_code 安装脚本 install_apns_offline.sh lang:sh
+
+*** 启用 apns_offline 模块
+
+#+begin_src erlang
+%% vi /etc/ejabberd/ejabberd.cfg
+
+  {mod_stats,    []},
+  {mod_time,     []},
+  {mod_vcard,    []},
+  %% 这里的 "python -u ..." 命令为 proxy 缺省值
+  {apns_offline, [{proxy, "python -u /opt/yk-im/build/send_to_apns.py"}]},
+  {mod_version,  []}
+ ]}.
+#+end_src
+修改 ejabberd 配置文件，加入 anps_offline 模块。模块 proxy 参数为处理离线消息的命令。需符合 erlport 协议，目前只开发了 Python 处理脚本，暂未开发 PHP 等版本。
+
+** 问题检查列表
+
+   - /usr/lib64/ejabberd/ebin/ 是正确的 ejabberd 模块目录？
+   - ejabberd.cfg 中，apns_offline 的 proxy 是否配置正确？
+   - 运行 python -u /opt/yk-im/build/send_to_apns.py 是否会报错？
+
+* 附录
+
+** 测试机配置说明
+
+| 资源       | 地址                           |        |
+|------------+--------------------------------+--------|
+| 连接服务器 | php.yukuai.cn                  |        |
+| 连接端口   | 5222                           |        |
+| 绑定域名   | yukuai.com                     |        |
+| 聊天室     | muc.yukuai.com                 |        |
+| bosh 服务  | http://php.yukuai.cn/bosh/     |        |
+|------------+--------------------------------+--------|
+|            | id                             | pwd    |
+|------------+--------------------------------+--------|
+| 管理员     | admin@yukuai.com               | 521198 |
+| 预建用户   | tao@yukuai.com,feng@yukuai.com | aaasss |
+| 预建聊天室 | yue@muc.yukuai.com             |        |
+
+** 调试技巧
+
+使用 ejabberdctl debug，打开一个 erlang 控制台并连接到 ejabberd 服务器。
+
+运行：l(apns_offline).
+
+可以重新加载 apns_offline 模块，而不需要重启 ejabberd。
+
+** /etc/ejabberd/ejabberd.cfg 范例
+
+#+octopress include_code ejabberd.cfg 范例 ejabberd.cfg lang:erlang
+
+** 参考网址
+
+- [[https://git.process-one.net/ejabberd/mainline/blobs/raw/2.1.x/doc/dev.html][Ejabberd 2.1.x Developers Guide]]
+  - Module Example
+  - External Authentication
+- [[http://nullable.de/post/2748889136/routing-ejabberd-xmpp-offline-messages-to-django-and-as][Routing ejabberd XMPP Offline Messages to Django and as an Apple Push Notification]]
+- [[http://metajack.im/2008/08/28/writing-ejabberd-modules-presence-storms/][Writing Ejabberd Modules: Presence Storms]]
+  - gen_module_opt
+- [[http://www.process-one.net/en/wiki/ejabberd_module_development/][Ejabberd module development]]
+- [[http://www.process-one.net/en/wiki/ejabberd_events_and_hooks/][Ejabberd events and hooks]]
+- [[http://www.caoyongfeng.com/2008/09/pythonejabberd.html][用Python为EJabberd实现自定义的身份验证]]
+
+
+** 规划
+管理域 
+|                     |                  |                              |   |   |
+|---------------------+------------------+------------------------------+---+---|
+| 用户域              | yukuai.com       |                              |   |   |
+| 管理域              | admin.yukuai.com |                              |   |   |
+|                     |                  |                              |   |   |
+| 管理员              | root@localhost   | aaasss                       |   |   |
+|                     |                  |                              |   |   |
+| 特殊JID：聊天室广播 | muc.yukuai.com   | 发送消息到所有激活的聊天室里 |   |   |
+|                     |                  |                              |   |   |
+
+http://www.jabbercn.org/%E9%A6%96%E9%A1%B5
+
+cp lib/eredis/ebin/* /usr/lib64/ejabberd/ebin/

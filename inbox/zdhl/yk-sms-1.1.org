@@ -1,0 +1,361 @@
+#+TITLE: 愉快网短信接口文档(Rev_23)
+
+* 客户端调用说明
+
+** 接口调用请求说明
+
+架设短信应用已部署到 http://sms.yukuai.com/， 则发送短信 test 到 13812312312 有两种调用方式：
+
+1. GET http://sms.yukuai.com/?c=test&m=13812312312
+2. GET http://sms.yukuai.com/?c=test&m=13812312312&ver=1.1&token=743001aa6202ee7c1ccb668f9d7b3827d23d5aae&timestamp=1366185682&signature=15204ffb2e56311eda772ba9c6ae4fcf
+
+第一种为V1.0调用形式, 第二种为V1.1形式。两者的区别在于，V1.1增加了：
+- 使用 token，timestamp, signature 验证用户
+
+现在正大 OA 系统，正大 KK 聊天工具使用 V1.1，其它系统均为 V1.0。
+
+** Ver 1.0 参数列表
+
+| 必须 | 参数名      | 取值范围                     | 默认值  | 说明                                                                      |
+|------+-------------+------------------------------+---------+---------------------------------------------------------------------------|
+|      | ver         | [1.0,1.1]                    | 1.0     | 指定接口版本                                                              |
+|      | u, user     | [UNKNOWN,NOYK,YHQ1,YHQ2,YUE] | UNKNOWN | 标识用户身份，[]中所列标识所有可选值。指定其一，如 YHQ1                   |
+| 是   | m, mobile   | (\d+,)*\d+                   |         | 短信接受方手机号码，如群发号码间用','隔开，V1.0 群发数量限制为 5 个号码   |
+| 是   | c, content  | 短信文本                     |         | 短信内容。                                                                |
+|      | gw, gateway | [AUTO,MDSHARE,MDSP,EMSP]     | AUTO    | 指定短信使用可选值其一短信网关发送(优先级：config.php 里的配置 > request) |
+|      | p, ip       | IP地址                       |         |                                                                           |
+|      | bid         | 商家ID                       |         |                                                                           |
+|      | type        | CAPTCHA,AUTO                 | AUTO    | 短信内容类型                                                              |
+
+** Ver 1.1 参数列表
+
+| 必须 | 参数名      | 取值范围                 | 默认值 | 说明                                                                          |
+|------+-------------+--------------------------+--------+-------------------------------------------------------------------------------|
+|      | ver         | [1.0,1.1]                | 1.0    | 指定接口版本                                                                  |
+| 是   | m, mobile   | (\d+,)*\d+               |        | 同 V1.0，但 V1.1 群发数量只受 POST 数据大小限制                               |
+| 是   | c, content  | 短信文本                 |        | 同 V1.0                                                                       |
+|      | gw, gateway | [AUTO,MDSHARE,MDSP,EMSP] | AUTO   | 同 V1.0，但可指定多个网关，如：&gw=MDSP,EMSP 表示先用 MDSP，如出错用EMSP 重试 |
+|      | p, ip       | IP地址                   |        |                                                                               |
+|      | bid         | 商家ID                   |        |                                                                               |
+|      | type        | CAPTCHA,AUTO             | AUTO   | 短信内容类型                                                                  |
+|------+-------------+--------------------------+--------+-------------------------------------------------------------------------------|
+| 是   | token       | 系统分配                 |        | 用户公钥令牌，由系统分配。用于标识身份                                        |
+| 是   | signature   | 系统分配                 |        | 签名密钥。根据公钥和密钥等计算，用于身份验证                                  |
+| 是   | timestamp   | 当前时间戳               |        | 签名时间。注意：签名 60 秒后失效。需服务器对时                                |
+
+
+* 运维部署说明
+** INSTALL
+
+*** 安装短信日志生成库
+
+- pear channel-discover pear.apache.org/log4php
+- pear install log4php/Apache_log4php
+
+*** 安装短信任务服务 gearman
+
+- CentOS:
+  - yum install php-devel libgearman gearmand libgearman-devel
+  - pecl install gearman
+
+- OSX:
+  - brew install gearman php54-gearman
+
+*** 安装 redis
+
+- CentOS:
+  - yum install php-pecl-redis
+
+- OSX:
+  - brew install php54-redis
+    参考：https://github.com/nicolasff/phpredis
+
+*** 安装进程守护工具 supervisor
+
+- yum install python-setuptools
+- easy_install supervisor
+- echo_supervisord_conf > /etc/supervisord.conf
+
+supervisor 配置：
+#+begin_src ini
+[program:yk-sms-gmworker]
+command=/usr/bin/php /var/www/sms2/queue/yk-sms-gmworker.php
+numprocs=1
+directory=/var/www/sms2/queue/
+stdout_logfile=/var/log/sms/gmworker.log
+stderr_logfile=/var/log/sms/gmworker_error.log
+environment=GEARMAN_USER=apache
+autostart=true
+autorestart=true
+user=apache
+#+end_src
+
+注：
+开发时，可不安装 supervisor，直接手动启动短信进程：
+
+php /var/www/sms2/queue/yk-sms-gmworker.php
+
+*** Web 配置
+
+- Httpd 配置里把根目录指向 /www/sms/htdocs
+- 日志文件默认位置在 /var/sms/log/，分接收日志如：mo*.log，发送日志如：mt20140101.log
+- 短信相关配置请修改文件：/www/sms/config/config.php
+
+*** [如需单元测试，请安装] phpunit 单元测试
+- pear config-set auto_discover 1
+- pear install pear.phpunit.de/PHPUnit
+
+- pear channel-discover components.ez.no
+- pear install --alldeps phpunit/PHPUnit_SkeletonGenerator
+
+*** [如出错，可选安装] Twig 模板引擎
+- pear channel-discover pear.twig-project.org
+- pear install twig/Twig
+
+** MAN
+
+*** 日志说明
+编号 | 发送时间 | 内网IP | 外网IP | 来源 | 短信类型 | 短信网关 | 网关返回值 | 号码 | 短信内容
+
+22628 | 2014-01-14 00:49:03 | 192.168.0.201 | 182.140.167.44 | MERB | CAPTCHA | EMSP | 2014011400490351 | 18985450835 | 尊敬的愉快网用户,您本次操作的验证码为：EF0BF0.【愉快网】
+
+*** redis
+
+- redis-cli
+- telnet 192.168.0.10 6379
+
+- 重置短信周期性数量限制
+  - del sms:freq
+
+*** 在 supervisor 里配置 yk-sms 并重启
+
+supervisorctl restart yk-sms-gmworker
+
+*** 计划任务命令
+
+curl http://sms.api.host/recive/
+
+*** 发送短信测试
+
+curl http://sms.api.host/send/?m=13896079527\&c=回复1注册\&u=yue
+
+* 开发说明
+
+引入 redis, gearman, supervisor 是为了支持大规模（200+条）群发短信
+
+** 系统流程
+
+#+begin_src plantuml :file assets/sms_flow.png :cmdline -charset UTF-8
+@startuml
+
+start
+
+:functions;
+note: 自动加载，异常处理等;
+
+:configs;
+:exception_handler;
+:application;
+:route;
+:controller->action;
+:sms_controller->send;
+:auth;
+:job_manager->smsFromRequest;
+:sms_service->send(job);
+:sms_router->send;
+:chose sms gateway;
+note: 根据用户，短信类型等分配短信通道
+
+:split sms group;
+note: 切分号码群组到短信通道支持的单词群发数量，如200条
+
+:execute sms job;
+
+:sms_gateway_manager->loadGateway->mt;
+stop
+
+@enduml
+#+end_src
+
+#+results:
+[[file:assets/sms_arch.png]]
+
+** 单元测试
+make unittest
+
+** Job结构体
+
+1. SMS_Job :: 客户端提交过来的短信发送任务
+   1. job:created :: timestamp-任务创建时间
+   2. job:id :: 自增id
+   3. job:type :: 任务类型
+
+   4. client:ip :: 客户端 IP 地址
+
+   5. sms:id :: 短信ID
+   6. sms:from :: 发送者
+   7. sms:to :: 目标
+   8. sms:content :: 短信内容
+   9. sms:send_time :: 定时发送时间
+
+2. SMS_MT_Job :: 短信发送任务
+
+   1. mt:group :: 处理后的将被发送的短信号码组标识
+   2. mt:content :: 处理后的将被发送的短信内容
+   3. mt:gateway :: 短信网关
+
+   4. result:status :: (OK|FAIL) 任务完成结果
+   5. result:finish_time :: 任务完成时间
+   6. result:code :: 任务返回码
+   7. result:error :: 捕获到的异常
+   8. result:message :: 额外的消息，如详细错误报告
+
+#+begin_src javascript
+{
+  job:type: "sms_mt",
+  job:created: "1389614220",
+  job:id: "205",
+  client:ip: "127.0.0.1",
+  sms:id: "2014011319570071",
+  sms:from: "test",
+  sms:to: "13492319120",
+  sms:content: "1【愉快网】",
+  sms:send_time: "",
+  mt:group: "13492319120",
+  mt:gateway: "MDSP",
+  mobile:mdn: "CT:CDMA2000",
+  sms:type: "UNKNOWN",
+  result:status: "ok",
+  result:code: "181125572066743220",
+  result:finish_time: "1389614220",
+  env: "development"
+}
+#+end_src
+** 配置短信接收定时任务
+如需收短信，需配置计划任务，任务执行周期建议为 1 分钟，最快周期可设置为 5 秒。
+#+BEGIN_EXAMPLE
+ crontab -e
+ * * * * * curl http://sms.yukuai.com/recive/ 1>/dev/null 2>&1
+  #+END_EXAMPLE
+** 短信接收工作方式
+1. 系统设置计划任务，执行周期为1分钟：curl "http://sms.yukuai.com/recive/"
+2. 发送短信时可跟应用来源、用户参数 u, 即 curl "http://sms.yukuai.com/send/?m=13896079527&c=回复1注册&u=yue" ，未设置 u 时，u 的默认值为 test
+3. 用户 u 需注册 回调 URL，如 "http://yue.yukuai.com/sms_callback.php"
+4. 如果现在，在客户的手机屏幕上，按时间顺序有 4 条短信：
+   1. 愉快网 => 用户：欢迎下载优惠劵，回复 1 好评【愉快网】
+   2. 愉快网 => 用户：欢迎加入聚餐，回复 1 确定【愉快网】
+   3. 用户 => 愉快网：1
+   4. 用户 => 愉快网：1
+5. 系统每监测到一条用户回复，就会把最近一条发送给用户的短信，和该回复，组成对话，POST 到 回调 URL，即：
+   1. POST [短信2，短信3] => "http://yue.yukuai.com/sms_callback.php"
+   2. POST [短信2，短信4] => "http://yue.yukuai.com/sms_callback.php"
+
+综上所诉，可以看到这个接口存在的问题是：短信 1 无法取得用户的回复。考虑到这种情况极其少见，所以现在对这个问题未做任何措施。
+可选解决方案：
+1. 事先定义各种回复，比如回复 21 是好评， 1是注册，以作区分。
+2. 接口提供查询API，供各应用自主查询接收短信，自主处理。
+
+** FAQ
+
+*** 定时发送问题
+
+短信定时发送，如果时间是较早的时间，比如定时为昨天。那短信会马上发送出去呢？还是就永远发不出去了？
+
+漫道技术支持  15:23:56
+
+马上
+
+
+亿美  15:25:26
+
+如果是今天定时 昨天 信息会提交失败的
+
+* 附录
+
+** 术语解释
+*** MO & MT
+
+SMS根据其收发源，可以分为二种 MO 和 MT 短信：
+上行（MO）：上行的意思就是短信发送到服务器端 ，MO又称 Mobile Original；
+下行（MT）：下行的意思就是短信从服务器端发回到手机上，MT又称Mobile Terminated，
+简单的说，从手机发起一个的过程叫上行(MO)，到手机结束的过程叫下行(MT)，
+比如，平时给你的朋友发送一条短信，对你来说就是上行(MO)，而对你的朋友来说，就是下行(MT)。
+在企业、行业应用中，从系统给手机发送信息的过程叫下行(MT)，而手机发送信息给系统的过程叫上行(MO)。
+** 短信网关分配
+
+| 用户    | 网关    | 用途                           |
+|---------+---------+--------------------------------|
+| SYS     | MDSP    | 系统用户，用于发送报警短信     |
+| NOYK    | MDSHARE | 兼容：发送不带愉快网字样的用户 |
+| UNKNOWN | MDSP    | 兼容：1.0短信接口遗留的用户    |
+| YHQ1    | MDSHARE | 优惠券                         |
+| YHQ2    | MDSP    |                                |
+| YUE     | MDSP    | 约吃饭                         |
+| KK      | MDSHARE | kk 聊天                        |
+| HR      | MDSHARE | 人力资源系统                   |
+|---------+---------+--------------------------------|
+|         | EMSP    | 验证码类短信                   |
+
+** OAUTH TOKEN
+
+GET: /oauth/login.php?
+
+GET: /client/callback.php?
+
+
+kk (oa):
+
+Request token : 64f980740b4707c973dcc9a3e6ff3778b81dd0ea
+Request token secret : cb8c59b07a78187b0cf771da3376fe1b58f44405
+
+hr:
+
+Request token : 886814990bdbee3ab83798fec78776b73c72c320
+Request token secret : 10e4da0f31d9bd24b6c7355e17e13da438ef443c
+
+未使用:
+
+Request token : d056ad7299fbc5ce16fdd9c1d604a206a14df190
+Request token secret : bbd6ab0689afc078127e79fa7a3f9dd218dafc1a
+
+Request token : 7409a5b3549ae3afca07dadff53264f26329cc96
+Request token secret : d09f4f5ed99def3465d87e80deeea69f9e3d6526
+
+Request token : d22808b8386bb5cb9c359c65c342304cff411d84
+Request token secret : af14ac6c813b1b27ddfa9ad4ebf64762c9a3abba
+
+Request token : f81e7a6775fdb1a8c316cfd274274f50395005e7
+Request token secret : 196e6625a6bbe26b1356573f417887dc82048e5a
+
+Request token : ce9f8a5e388ed3181c49c88ac7a0642601dba12d
+Request token secret : 80038bc30ae338f97b3dbdbed451a5814560a2f1
+
+Request token : 80890f0e391f9434d78efe35a2a86191663c77a6
+Request token secret : 9d6b0ce5fa7e74f7f50415b7a9f04b5a5a68a326
+
+Request token : a0d6b98a82398dd41f3d8132860a162c5820d881
+Request token secret : 05f0dcb5c9d912498bfeca4989a265c68c4ef511
+
+Request token : 58a2e384c15d0a672e0d882ad87d880404224b43
+Request token secret : 9cb12f5692c167a32e47b1ccd7620197fbea33dc
+
+** 号码段
+1. 中国电信手机号码开头数字
+   2G号段（CDMA网络）133、153
+   3G号段（CDMA2000网络）180、181、189、1349
+
+2. 中国联通手机号码开头数字
+   2G号段（GSM网络）130、131、132、
+   3G上网卡145、
+   3G号段（WCDMA网络）155、156、185、186
+
+3. 中国移动手机号码开头数字
+   2G号段（GSM网络）有139，138，137，136，135，134x (0-8)，159，158，152，151，150， 182、183，184。
+   3G号段（TD-SCDMA网络）有157，188，187
+   3G上网卡 147
+
+4. 补充
+   14开头的号码以前为上网卡专属号段，如中国联通的是145，中国移动的是147等等。
+** 参考链接
+
+http://supervisord.org/

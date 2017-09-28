@@ -1,0 +1,66 @@
+---
+deploy: yk
+layout: post
+title: "愉快网 YK-IM 即时聊天系统设计"
+date: 2013-01-09 14:45
+comments: true
+categories: yk-im
+---
+#+OPTIONS: ^:nil
+
+** 杂项，待整理
+
+*** 登录 XMPPP 服务器
+    需考虑采用开放，还是闭合登录策略：
+
+    开放策略指用户可用愉快网的分配的 JID 和密码，在任何 XMPP 客户端上
+    登录使用。
+
+    闭合策略指用户只能使用愉快网指定的客户端，如网页端和愉快网手机端登
+    录。
+
+*** JID
+    直接以数据表 yukuai.site_user 中的字段 userpin 为 JID。
+
+    优点是可以直接使用愉快网的账户登录 xmpp 服务器。
+
+    缺点是：
+    XMPP 支持以汉字作为 JID名。但部分 userpin 包含一些特殊符号，如
+    '【★ι ξǒ ㄒrιêd★】'。这种名字会无法登陆。而且，还可能引起一些隐晦
+    的 BUG。需要注意预防。
+
+
+*** 离线消息计数
+
+   由 xmpp 服务器插件完成。
+
+   当用户 tom 收到离线消息时，在 memcache 里，使键 num-offmsg-tom 的值
+   加 1。前台页面中，通过访问 memcache 得到离线消息计数。
+
+#+begin_src php
+$key = "num-offmsg-{$jid_name}";
+$num = $memcache->get($key);
+#+end_src
+
+*** 离线消息 iOS 推送
+
+   由 xmpp 服务器插件完成。[[http://php.yukuai.cn/blog/2012/12/29/yk-ejabberd-server/#sec-1-2][插件说明]]
+
+   当用户 tom 收到离线消息时，执行 send_to_apns.py ，由该 python 脚本
+   执行动作。
+
+*** 聚会聊天室
+
+    为每个聚会，自动建立一个聊天室。聊天室地址为：
+    party-$pid@yukuai.com
+
+** Memcache 键值对应表
+
+注：下表中的 $jid 均只取 JID 名称部分，即 userpin。示例 $jid 均为 jack
+
+| 键                          | 值       | 说明                             | 示例                           |
+|-----------------------------+----------+----------------------------------+--------------------------------|
+| webim-num-offmsg-$jid       | int      | $jid 收到的离线消息数量          | webim-num-offmsg-jack: 9       |
+| webim-num-offmsg-$jid-$from | int      | $from 发送给 $jid 的离线消息数量 | webim-num-offmsg-jack-rose : 7 |
+| webim-status-$jid           | int(0,1) | $jid 如在线: 1，否则: 0          | webim-status-jack: 1           |
+|                             |          |                                  |                                |

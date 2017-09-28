@@ -1,0 +1,58 @@
+* INSTALL
+
+** 安装 Master
+yum install -y puppet-server
+systemctl start  puppetmaster.service
+
+# check:
+netstat -nltp | grep 8140
+
+** 安装 Agent
+yum install puppet
+#请求认证
+puppet agent --test
+
+#注册所有请求的节点
+puppet cert --sign --all
+
+#查看所有节点认证
+puppet cert --list --all
+
+** 使用
+
+vi /etc/puppet/manifests/projectname.pp
+
+#+INCLUDE: "shell/install-puppet-agent" src sh
+
+/etc/puppet/puppet.conf
+
+node "master" {
+
+  file { '/root/example_file.txt':
+    ensure => "file",
+    owner  => "root",
+    group  => "root",
+    mode   => "700",
+    content => "Congratulations!
+    Puppet has created this file.
+    ",}
+
+}
+
+puppet apply /etc/puppet/manifests/projectname.pp
+
+** module
+puppet config print modulepath
+puppet config print module_repository
+cd /etc/puppet/modules
+mkdir -p consul/{files/etc/consul.d,manifests,templates}
+gdhbashton-consul_template
+
+Puppet运维实战
+
+https://www.gitbook.com/book/kisspuppet/puppet
+
+
+* SE
+
+1. set dns: puppet.service.dm

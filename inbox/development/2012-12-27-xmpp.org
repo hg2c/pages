@@ -1,0 +1,215 @@
+#+OPTIONS: ^:nil
+
+#+BEGIN_HTML
+---
+deploy: yk lt
+layout: post
+title: "XMPP 协议学习笔记"
+date: 2012-12-27 11:49
+comments: true
+categories: yk-im
+---
+#+END_HTML
+
+本文为 《[[http://vdisk.weibo.com/s/mXDhe][Professional XMPP Programming with JavaScript and jQuery]]》 一
+书的学习笔记。该书完整的介绍了 XMPP 协议的使用，以及如何用 xmpp +
+javascript 搭建一个即时聊天系统、或者游戏等有趣的应用。
+
+** XMPP/JID
+   
+XMPP (eXtensible Messaging and Presence Protocol)，通常用来传输结构化
+数据，广泛用于建立大规模及时通讯，网络游戏，搜索引擎，协作平台，以及语
+音视频会议网络。
+
+在 XMPP 网络里：
+1. 使用 JID (jabber identifiers) 来标识各实体的身份。
+
+   JID 由三部分组成：名字，域名和资源名。如 tao@yukuai.com 包含名字
+   tao, 域名 yukuai.com。通常 JID 使用更完整的形式，比如通过网页端登录
+   时的 JID 为 tao@yukuai.com/webim，而通过客户端登录时为
+   tao@yukuai.com/padian。
+
+2. 使用发送、接受三种 XML 标签来交互通讯：Presence, Message, IQ。
+
+
+** XMPP 数据包实例
+
+#+begin_src xml
+<stream:stream>
+  <iq type='get'>
+    <query xmlns='jabber:iq:roster'/>
+  </iq>
+  <presence/>
+  <message to='darcy@pemberley.lit'
+           from='elizabaeth@longbourn.lit/ballroom'
+           type='chat'>
+    <body>
+      I cannot talk of books in a ball-room; my head is always full of
+      something else.
+    </body>
+  </message>
+  <presence type='unavailable'/>
+</stream:stream>
+#+end_src
+
+说明：
+1. elizabaeth 用 <stream:stream> 创建 XMPP Stream；
+2. 用 <iq> 查询 elizabaeth 的好友列表；
+3. 用 <presence> 通知服务器 elizabaeth 在线；
+4. 用 <message> 给 darcy 发了一条消息；
+5. 用另一条 <presence> 通知服务器 elizabaeth 离线；
+6. 最后，用 </stream:stream> 关闭 XMPP Stream。
+
+** XML 通用属性
+
++ from
+
+  来源 JID
+  在“客户端-服务器”，服务端有自动设置 from 的能力，故建议省略以免写错；
+  在“服务器-客户端”，如省略 from 表示信息来自服务器本身；
+  在“服务器-服务器”，如省略 from 会报错。
+
++ to
+
+  目标 JID。
+
++ type
+
+  <presence>,<message>,<iq>各有不同的 type 取值范围。
+
++ id
+
+  用来唯一地标识一个服务器回应。
+
+#+begin_src xml
+<!-- send -->
+<body rid='3878508353'
+      xmlns='http://jabber.org/protocol/httpbind'
+      sid='2b1cb4238286f29ad3035b3558e9d699a0cc4309'>
+  <iq type='get'
+      xmlns='jabber:client'><query
+      xmlns='jabber:iq:roster'/></iq>
+</body>
+<!-- recive -->
+<body xmlns='http://jabber.org/protocol/httpbind'>
+  <iq xmlns='jabber:client'
+      from='tao@jappix.luo.cc'
+      to='tao@jappix.luo.cc/strophejs'
+      type='result'>
+    <query xmlns='jabber:iq:roster'>
+      <item subscription='both' jid='xi@jappix.luo.cc'/>
+    <item subscription='both' jid='feng@jappix.luo.cc'/></query>
+</iq></body>
+#+end_src
+
+
+** PRESENCE
+   <presence> 用来控制在线、离线、忙碌状态。以及在线签名
+
+*** 普通用法
+    普通 <presence> 节如含 type 属性，则取值范围为 unavailable 或
+    error ，表示是否可正常通信。
+
+#+begin_src xml
+<presence/>
+
+表示隐身
+<presence type='unavailable'/>
+
+<presence>
+  <show>away</show>
+  <status>at the ball</status>
+</presence>
+
+<presence>
+  <status>touring the countryside</status>
+  <priority>10</priority>
+</presence>
+
+<presence>
+  <priority>10</priority>
+</presence>
+#+end_src
+
+
+*** 子节点
+
+    1. <show>
+       标记用户状态，可选值有：
+       | away | chat | dnd | xa   | unavailable |
+       |------+------+-----+------+-------------|
+       | 离开 | 正常 | 忙  | 扩展 | * 隐身/离线 |
+       
+    2. <status>
+       个人签名
+
+    3. <priority>
+       取值范围：(-128, 127)，多客户端中接受信息的优先级
+
+*** 扩展 presence 状态
+    不推荐
+
+*** 订阅 presence
+    通过改变 type 为 subscribe, unsubscribe, subscribed, 或
+    unsubscribed. 可实现添加、删除好友及查询订阅状态。
+
+*** 定向 presence
+    向指定用户发送 presence 信息，比如实现对指定好友隐身。
+
+** Message
+   <message> 用于聊天，但它其实可以传输任何结构化信息。
+
+*** Message 类型
+    type 可选，但建议提供
+    1. chat: 一对一聊天；
+    2. error: 服务器报错；
+    3. normal: 默认 type, 很少使用；
+    4. groupchat: 多人对话专用；
+    5. headline: 推送警告与新闻。
+
+*** Message 内容
+    内容通过两个子节点提供：
+    1. <body>: 直接可读的聊天文本；
+    2. <thread>: 提供扩展信息，比如邮件，比如 html 格式化文本
+       (XEP-0071)，比如多人会话状态提醒 (XEP-0085)。
+
+** IQ
+   Info/Query，用于提供请求/回应机制。类似 Http 协议。
+   IQ 有两种 type：get 和 set。请求后得到两种回应：result 和 error。
+
+#+begin_src xml
+<iq from=’jane@longbourn.lit/garden’
+    type=’set’
+    id=’roster3’>
+  <query xmlns=’jabber:iq:roster’>
+    <item jid=’darcy@pemberley.lit’ name=’Mr. Darcy’/>
+  </query>
+</iq>
+
+<iq to=’jane@longbourn.lit/garden’
+    type=’result’
+    id=’roster3’/>
+#+end_src
+
+说明：
+Jane 试着加 Darcy 先生为好友，服务器返回一个空 IQ-result，表示添加好友
+成功。
+
+** 实验
+
+#+begin_src javascript
+// 查询好友列表
+connection.send($iq({'type':'get', 'id', 'ro'}).c('query', {'xmlns':'jabber:iq:roster'}).tree());
+// 加好友
+connection.send($iq({'type':'set'}).c('query',{'xmlns':'jabber:iq:roster'}).c('item', {'jid':'ning@jappix.luo.cc','name':'Ning'}).tree());
+
+connection.send($pres({'type':'subscribe', 'to':'quan@jappix.luo.cc'}).tree());
+// 对指定好友隐身
+connection.send($pres({'type':'unavailable', 'to':'quan@jappix.luo.cc'}).tree());
+// 发送信息（注意：对方不是好友也可以收到）
+connection.send($msg({'type':'chat', 'to':'quan@jappix.luo.cc'}).c('body', 'hi').tree());
+// 加入聊天室 yue@muc.luo.cc
+send($pres({to: 'yue@muc.luo.cc/tao', from: 'tao@jappix.luo.cc'}).c('x', {xmlns:'http://jabber.org/protocol/muc'}))
+// 聊天室发言
+send($msg({'type':'groupchat', 'to':'yue@muc.luo.cc'}).c('body', 'hi 咿呀伊尔哟'))
+#+end_src

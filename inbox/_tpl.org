@@ -1,0 +1,160 @@
+#+DRAWERS: HIDDEN STATE
+#+STYLE:html { font-family:Consolas; font-size: 14pt; }
+#+STYLE:pre {font-family: Consolas; font-weight: bold; font-size:14pt}
+#+STYLE:.title { text-align: center; color: green; font-family: Consolas; color:#0000FF}
+#+STYLE:h2 { font-family: Consolas; color:#0000FF}
+#+STYLE:h3 { font-family: Consolas; color:#FF00FF}
+#+STYLE:h4 { font-family: Consolas; color:#9900FF}
+
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://gist.github.com/mowen/326524/raw/3ce9e184e1ea16be1e33ca9f0f93f44af03991d8/org-style.css" />
+
+* 表格
+
+|   | <6>    |
+| 1 | one    |
+| 2 | two    |
+| 3 | this is a long chunk of text |
+| 4 | four   |
+
+| N | N^2 | N^3 | N^4 | sqrt(n) | sqrt[4](N) |
+|---+-----+-----+-----+---------+------------|
+| / | <   |     | >   | <       | >          |
+| 1 |     |     |     |         |            |
+| 2 |     |     |     |         |            |
+| 3 |     |     |     |         |            |
+|---+-----+-----+-----+---------+------------|
+#+TBLFM: $2=$1^2::$3=$1^3::$4=$1^4::$5=sqrt($1)::$6=sqrt(sqrt(($1)))
+
+* 代码高亮
+
+Python
+#+begin_src python
+def main():
+  print "Hello %s" % ("what's the problem")
+#+end_src
+
+C++
+#+begin_src c++
+for (int i = 0; i < 30; i++)
+{
+  cout << "Hello" << endl;
+}
+#+end_src
+
+JSON
+#+begin_src js
+{
+  "error":"invalid_access_token",
+  "error_code":21332,
+  "request":"\/2\/statuses\/update.json"
+}
+#+end_src
+
+JS
+#+begin_src js
+function log(msg) {
+  return DEBUG && console.log(msg);
+}
+#+end_src
+
+
+#+INCLUDE: "~/.emacs.d/init.el" src emacs-lisp :lines "34-42"   Include lines 5 to 10, 10 excluded
+
+Language	Identifier	Language	Identifier
+Asymptote	asymptote	Awk	awk
+Emacs Calc	calc	C	C
+C++	C++	Clojure	clojure
+CSS	css	ditaa	ditaa
+Graphviz	dot	Emacs Lisp	emacs-lisp
+gnuplot	gnuplot	Haskell	haskell
+Java	java
+Javascript	js	LaTeX	latex
+Ledger	ledger	Lisp	lisp
+Lilypond	lilypond	MATLAB	matlab
+Mscgen	mscgen	Objective Caml	ocaml
+Octave	octave	Org mode	org
+Oz	oz	Perl	perl
+Plantuml	plantuml	Python	python
+R	R	Ruby	ruby
+Sass	sass	Scheme	scheme
+GNU Screen	screen	shell	sh
+SQL	sql	SQLite	sqlite
+
+* Curriculum Vitae
+#+INDEX: CV
+#+INDEX: Application!CV
+
+** This is a headline
+Still outside the drawer
+:DRAWERNAME:
+This is inside the drawer.
+:END:
+After the drawer.
+
+The Org homepage[fn:home] now looks a lot better than it used to.
+Org homepage[fn:1] now looks a lot better than it used to.
+     ...
+The Org homepage[fn:2] now looks a lot better than it used to.
+The Org homepage[fn:home] now looks a lot better than it used to.
+The Org homepage[fn:: inline home] now looks a lot better than it used to.
+The Org homepage[fn:page: inline home page] now looks a lot better than it used to.
+
+
+
+[fn:1] The link is: http://orgmode.org
+[fn:2] The link is: http://orgmode.org
+[fn:home] The link is: http://orgmode.org
+
+* 嵌入HTML开始
+#+OPTIONS: d:RESULTS
+* Functions                                                        :noexport:
+#+name: wrap-html
+#+begin_src emacs-lisp :var text="" :results raw
+(concat "#+BEGIN_HTML\n<div class=\"html-output\">\n" text "\n</div>\n#+END_HTML")
+#+end_src
+
+* Examples
+
+The HTML source
+#+name: eg-1
+#+begin_src org :results replace drawer :exports both :post wrap-html(text=*this*)
+  A <b>bold</b> statement.
+#+end_src
+
+
+
+Results in the output
+#+results: eg-1
+
+
+Results in the output
+#+results: eg-1
+
+
+* Example 2
+:PROPERTIES:
+:results: replace drawer
+:exports: results
+:post: wrap-html(text=*this*)
+:END:
+
+#+name: eg-2
+#+begin_src org
+  Some <i>italic</i>.
+#+end_src
+
+#+results: eg-2
+
+#+name: eg-3
+#+begin_src org
+  You can <b>nest <i>inline</i> tags</b>.
+#+end_src
+
+#+results: eg-3
+
+
+* 嵌入HTML结束
+
+1. yk-sms：负责愉快网短信平台的架构和开发，其支持多个短信网关，自动失败重发，无限量群发等功能，在正大的愉快网，OA系统和华日各金融项目中广泛应用，已无故障连续稳定运行两年时间。
+2. yk-im: 主导愉快网消息系统架构设计，实现网页、手机、PC全端即时聊天。并负责开发 erlang 后台模块。
+3. my-school: 主导重庆工程学院我的大学项目架构设计，负责后台，用 nodejs 快速搭建了 REST 接口。

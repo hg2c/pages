@@ -1,0 +1,16 @@
+* 参考链接
+
+1. 微信公众平台
+   https://mp.weixin.qq.com
+2. 微信公众平台开发者文档
+   http://mp.weixin.qq.com/wiki/index.php?title=%E9%A6%96%E9%A1%B5
+
+3. 微信公众平台php开发包, weixin developer SDK.
+   https://github.com/dodgepudding/wechat-php-sdk
+4. 微信公共平台非官方SDK，主要实现主动的消息推送和获取。
+   https://github.com/vincenting/weChat-python-sdk
+5. 微信 api 参考-php-思路
+   https://github.com/zscorpio/weChat
+
+6. snoopy 详细介绍
+   http://www.9it.me/article-33.html

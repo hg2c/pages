@@ -1,0 +1,152 @@
+
+* 类图
+
+#+begin_src plantuml :file assets/uml/lfrt.png :cmdline -charset UTF-8
+class Log {
+  creator 创建者
+  created 创建时间
+  modifier 修改人
+  modified 修改时间
+}
+
+class Configuration {
+  section 组编码
+  key 参数编码
+  value 参数值
+  description 功能描述
+}
+
+class Enum {
+  key 关键字
+  name 枚举名称
+  description 描述
+  value 枚举值
+}
+
+class Sn {
+  name 规则编码
+  description 规则名称
+  pattern 规则模式字符串
+}
+
+class user {
+  uid
+  name
+  password
+  type 个人|组织
+}
+
+class profile_verfiy {
+  uid
+  real_name 实名
+  sid 身份证
+  phone 电话号码
+}
+
+class profile_account {
+  uid
+  账户
+  开户行
+}
+
+class profile_company {
+  uid
+  contact
+}
+
+estate_contract
+class 房产合同 {
+  合同编码
+  纸质合同号
+  物业地址
+  签订时间
+}
+
+class Transaction|快贷业务管理-业务申请 {
+合同号
+  经办中介公司
+  申请日期
+  中介联系人
+  中介联系电话
+  中介经办人
+  物业地址
+
+  financing 融资金额
+  mortgage 按揭金额
+  redeem 赎房金额
+  service 服务费
+  price 成交价
+  valuation 估计价
+  loan 委贷金额
+}
+
+class 交易各方信息 {
+  合同
+  role 性质(seller|buyer)
+  uid 用户
+}
+
+class 交易文件清单 {
+  合同
+  file 文档名称
+  role 所属方
+  uploaded 是否齐备
+}
+
+
+class Transaction|快贷业务管理-业务办理 {
+  合同
+  中介公司
+  申请日期
+  中介经办人
+
+  financing 融资金额
+  mortgage 按揭金额
+  redeem 赎房金额
+  service 服务费
+  price 成交价
+  valuation 估计价
+  loan 委贷金额
+}
+
+class 收付明细 {
+  收付项目（服务费，购房尾款等）
+  收付方向
+  收付方式 (现金，转账)
+  金额
+  预计日期
+
+  uid 对方用户
+}
+
+note as Comment
+end note
+
+class ParameterService {
+  +query(section [,name])
+  +update(section, name, value [,description])
+  +delete(section, name)
+  +flush()
+}
+
+class EnumService {
+  +get(name)
+  +update()
+  +remove()
+  +flush()
+}
+
+class SnService {
+  +get(name)
+  +update(name, pattern [,description])
+  +remove(name)
+}
+class SerialCodeGeneratingService {
+}
+class SerialCodeGenerator {
+}
+
+#+end_src
+
+#+results:
+[[file:assets/uml/lfrt.png]]

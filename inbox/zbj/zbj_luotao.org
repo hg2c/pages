@@ -1,0 +1,241 @@
+#+TITLE: 猪八戒技术评定-罗涛-P6申请
+#+OPTIONS: toc:2 H:3
+
+#+BEGIN_COMMENT
+1. PPT内容
+呈现个人在自上次晋升以来的主要业绩，重点讲解自己对10项能力的胜任力
+申请 P6 及以上级别,需在述职中体现对所负责产品/主要工作项目的未来计划,及对产品/工作的创新想法
+申请 P2~P5,需要在述职中体现对产品/主要工作项目规划的理解,及自己的创新想法(如有)
+
+2. 定级规则
+晋升者讲解ppt，重点讲解自己对10项能力的胜任力，10分钟
+问答环节，评委会针对晋升者的讲诉进行问答，5分钟
+评委会投票：评委会对晋升者的10项能力逐一进行投票，每项能力必须过半数通过才算合格。
+确定是否晋升：原则上10项能力必须全部通过才能晋升。
+
+3. 评定顺序
+
+2014/11/24
+刘柳开发数据工程师
+廖家绪开发JAVA工程师
+廖克兰开发JAVA工程师
+罗涛开发JAVA工程师
+钟锐开发JAVA工程师
+黄川开发JAVA工程师
+欧井艮开发JAVA工程师
+#+END_COMMENT
+
+* 专业技能
+
+** 编码能力
+
+#+BEGIN_QUOTE
+P5. 熟练掌握语言，有多种框架的应用开发经验。项目开发过程熟练使用javascript、html、css、xml等多种语言设计过复杂的用户交互和前后台交互逻辑，使用各种数据描述方式设计前后台接口，充分考虑接口设计的灵活性和轻便性。
+
+P6. 熟知各类公共库的优缺点、适用场景并能切实运用；有较好的代码风格，能够体现面向对象的思想；能在编码中充分考虑性能的因素。
+
+P7. 注重代码重用性、性能和系统性，能够规避因为系统因素、代码库设计等引起的问题。
+#+END_QUOTE
+
+*自测：P6+*
+
+愉快网IM (socket.io + ejabberd), [[https://github.com/lotreal/breaking][breaking]]
+
+** 基础知识（运维，数据库，数据结构，算法，安全，设计模式等）
+
+#+BEGIN_QUOTE
+P5. 具备初步的运维能力，熟悉linux操作系统；能够在数据库设计中考虑到性能，避免慢SQL；熟悉Thrift接口的编写和使用方法
+
+P6. 能够独立部署和维护一个中小型系统。能在代码中实际应用常用数据结构、算法和设计模式。熟悉最少1种NOSQL数据库。
+
+P7. 在运维、安全、数据库、数据结构、算法、设计模式中的最少一个方面有突出的理解和实践。
+#+END_QUOTE
+
+*自测：P6*
+
+愉快网短信服务(适配器), 愉快网IM, REDIS, ASCP
+
+** 定位和解决问题
+
+#+BEGIN_QUOTE
+P5. 能够主动发现和解决代码和系统中的专业问题, 并能帮助别人解决他们遇到的问题
+
+P6. 能主动分析性能和系统问题，并采取一定措施避免问题重现。能总结常见问题的分析套路，并提炼为可重复操作的流程，分享给团队，帮助整个团队提高相应水平。
+
+P7. 同P6
+#+END_QUOTE
+
+*自测：P6+*
+
+技术攻关, 单元测试, BUG管理, 知识库, 代码规范
+
+** 架构能力
+
+#+BEGIN_QUOTE
+P5. 曾经主导过中型项目的架构设计，在设计阶段就能对各方面进行深入分析、进行正确决策，并保证结果最终符合设计目标（关键点：需要运营结果的验证）。
+曾经参与过一个服务化项目的设计和开发。
+
+P6. 曾经主导过至少一个板块级的成功项目架构设计，在设计阶段就能对各方面进行深入分析、进行正确决策，并保证结果最终符合设计目标（关键点：需要运营结果的验证）。
+曾经主导过一个服务化项目的设计和开发。
+
+P7. 曾经推动过重要业务模块的服务化转变过程。
+#+END_QUOTE
+
+*自测：P6*
+
+参与猪八戒服务化会议, 愉快网短信服务(gearman), 愉快网IM（同呼呼：redis作为消息总线）
+
+** 业务知识
+
+#+BEGIN_QUOTE
+P5. 熟悉负责的产品主要业务流程
+
+P6. 熟悉负责的产品主要业务流程，并能在技术选型和业务特性上，给产品团队以建议。
+
+P7. 在技术设计时能针对产品、架构的未来发展进行预留性/可扩展的设计，并能在技术选型和业务特性上，给产品团队以建议。
+#+END_QUOTE
+
+*自测：P6+*
+
+猪八戒开放平台设计, 愉快网架构
+
+* 通用技能
+
+** 执行与推动
+
+#+BEGIN_QUOTE
+P5. 能协调内外部资源，主导过多人参与的项目，具备中型项目担任技术负责人的能力
+
+P6. 担任过一个成功的板块级项目的技术负责人；或者在公司级项目中成功领导过核心子项目。
+
+P7. 同P6
+#+END_QUOTE
+
+*自测：P6*
+
+鸿巨CTO，正大架构师
+
+** 沟通与表达
+
+#+BEGIN_QUOTE
+P5. 沟通准确有效，能快速地理解需求方意图，能清晰地陈述自己的观点和想法。
+
+P6. 能够进行跨团队的有效沟通，能够在多人面前演讲。
+
+P7. 同P6
+#+END_QUOTE
+
+*自测：P6*
+
+同上
+
+** 总结与分享
+
+#+BEGIN_QUOTE
+P5. 能将自己的工作成果以文档的形式沉淀下来
+
+P6. 能够提炼出自己的方法和技巧，并乐于分享给大家
+
+P7. 知识传播者，能够将一些先进的业界技术和理念在公司成功推广
+#+END_QUOTE
+
+*自测：P6+*
+
+1. 分享 svn, git, emacs, lisp, erlang, xmpp, 设计模式, 如何搜索, hadoop 等。
+2. 建立鸿巨知识库，正大知识库。
+3. Makefile, Readme, [[http://svn.zhubajie.la/svn/webim_v5/trunk/README.md][Webim README]], 预订宝 - 安装程序打包说明。
+4. mediawiki -> jira + confluence + fisheye + crowd -> octopress + orgmode。
+
+** 影响力
+
+#+BEGIN_QUOTE
+P5. 在团队内部有足够的专业影响力
+
+P6. 在版块范围内有足够的专业影响力
+
+P7. 同P6
+#+END_QUOTE
+
+*自测：P6*
+
+成功推广 git, 持续集成等。
+
+** 培养与管理
+
+#+BEGIN_QUOTE
+P5. 具备培养新人的能力，能为他们制定培养计划，并分阶段成功实施
+
+P6. 确实的培养出P4以上的工程师
+
+P7. 确实的培养出P5以上的工程师
+#+END_QUOTE
+
+*自测：P6*
+
+正大带实习生8人，4人转正，2人工作至今。
+
+* 总结
+
+| 编码能力 | 基础知识 | 解决问题 | 架构能力 | 业务知识 | 执行推动  | 沟通表达 | 总结分享 | 影响力 | 培养管理 |
+|----------+----------+----------+----------+----------+------------+----------+----------+--------+----------|
+| P6+      | P6       | P6+      | P6       | P6+      | P6         | P6       | p6+      | p6     | P6       |
+
+* 附录
+
+** [[https://github.com/lotreal/breaking][ breaking]]
+
+定义 API 所需参数，返回值形式，错误返回值:
+#+begin_src js
+module.exports =
+    basePath: 'http://127.0.0.1:3010/api'
+    apis: [
+        {
+            name: 'login'
+            path: '/users/login'
+            httpMethod: 'POST'
+            data:
+                username: 'lotreal@gmail.com'
+                password: 'dev'
+            response:
+                '?id': 'nq41UtaBL2F79'
+                token: 'kHJsOH3GZCOqPnsP0rsT4yqLB5mXH'
+                ttl: 999
+                created: '20140822 12:05:46'
+                uid: 1
+            errorResponses:
+                error: 502
+        }
+    ]
+#+end_src
+
+建立 Mock API 服务器：
+#+begin_src js
+express = require 'express'
+breaking = require 'breaking'
+resource = require './discovery'
+
+app = express()
+
+breaking.bad app, resource
+
+app.listen 3400
+console.log 'breaking.bad listen to 3400...'
+#+end_src
+
+调用、验证API：
+#+begin_src js
+api.login.request data, (err, token)->
+    expect(api.login.verify token).to.be.ok
+#+end_src
+
+** orgmode
+
+#+begin_src plantuml :file assets/user.png :cmdline -charset UTF-8
+@startuml
+
+用户 --> (愉快网) : site_profile
+用户 ---> (德庄) : member[business='德庄']
+用户 ---> (牛尾巴) : member[business='牛尾巴']
+
+@enduml
+#+end_src

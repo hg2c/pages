@@ -1,0 +1,3 @@
+[userid@hostname ~]$ sudo yum install rpm-build redhat-rpm-config rpmdevtools make gcc
+[userid@hostname ~]$ mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+[userid@hostname ~]$ echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros

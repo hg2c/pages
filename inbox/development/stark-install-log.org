@@ -1,0 +1,55 @@
+# run gitolite
+docker run -v /luo/git:/home/git/repositories -p 10260:22 -e SSH_KEY="$(cat ~/.ssh/git_stark.pub)" elsdoerfer/gitolite
+
+
+
+# config ssh
+vi /etc/ssh/sshd_config
+
+mkdir .ssh
+cat id_rsa.pub > .ssh/authorized_keys
+chmod 600 .ssh/authorized_keys
+service sshd restart
+
+
+# create wuwo disk
+mkdir /wuwo
+mount /dev/xvdd /wuwo
+# mkfs.ext4 /dev/xvdd
+
+# add yum source
+yum install elinks
+# elinks http://download.fedoraproject.org/pub/epel/6/i386/repoview/epel-release.html
+rpm -ivh http://mirror.pnl.gov/epel/6/i386/epel-release-6-8.noarch.rpm
+yum update
+
+
+#
+yum install -y gcc gcc-c++ git redis tmux ruby rubygems
+
+gem install compass
+service redis start
+
+# nvm & nodejs
+curl https://raw.githubusercontent.com/creationix/nvm/v0.8.0/install.sh | sh
+
+source ~/.bash_profile
+nvm ls-remote
+nvm install 0.10.29 && nvm alias default 0.10.29
+# echo registry = http://registry.cnpmjs.org > ~/.npmrc
+npm install -g node-gyp grunt-cli bower coffee-script gulp
+
+
+#boot wis
+git clone https://github.com/lotreal/wis.git
+cd wis
+grunt build
+NODE_ENV=production node dist/server.js
+
+#gito
+yum install gitolite3
+su - gitolite3
+gitolite setup -pk luotao@air.pub
+
+# mysql
+yum -y install mysql-server

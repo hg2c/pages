@@ -1,0 +1,328 @@
+---
+deploy: yk
+layout: post
+title: "愉快网 YK-IM 即时聊天系统设计 V2"
+date: 2013-02-22 15:53
+comments: true
+categories: yk-im
+---
+#+OPTIONS: ^:nil
+
+* 用户认证
+
+** 问题
+
+虽然 ejabberd 支持数据库或 LDAP 等多种用户认证方式，完全可以直接使用愉快网的
+账户直接登录。但网页端使用 javascript 连接 xmpp bosh 服务时，必须明文
+提供账号和密码。为了避免账户安全上的风险，而使用服务器自动生成的 xmpp
+密码。
+
+** 技术细节
+
+愉快网账户和 XMPP 服务器账户的对应关系如下：
+
+| 愉快网账户 | XMPP服务器账户                                    |
+|------------+---------------------------------------------------|
+| userpin    | jid = userpin                                     |
+| pass       | pass = md5(sha1(userpin).密码生成时间.私钥字符串) |
+
+当用户使用愉快网账户成功登录愉快网后：
+
+网页端——在当前页面写入该用户的 jid 和 pass
+<script>
+var yConfig = {"webim_user":"lotreal","webim_pass":"0d15ca43**********"};
+</script>
+
+移动端——随登录成功返回该用户的 jid 和 pass
+
+
+
+* 账号管理
+
+** 新建账号
+** 修改账号密码
+** 删除账号
+
+
+
+* 通信管理
+
+** 账号 A 发送消息到账号 B
+
+** 黑名单：屏蔽、解除屏蔽和黑名单查询
+
+*** PHP
+
+当前登录用户，屏蔽来自 feng@yukuai.com 的所有消息：
+
+http://im.api.host/?q=iq/block&jid=feng@yukuai.com
+
+当前登录用户，解除对 feng@yukuai.com 的屏蔽：
+
+http://im.api.host/?q=iq/unblock&jid=feng@yukuai.com
+
+查询当前登录用户的黑名单：
+
+http://im.api.host/?q=iq/query/blocked
+
+
+*** XMPP
+
+场景一、账号 tao@yukuai.com 登录后，想屏蔽来自 feng@yukuai.com 的所有消息
+
+发送：
+
+#+begin_src xml
+<iq type='set'>
+  <block xmlns='urn:xmpp:blocking'>
+    <item jid='feng@yukuai.com'/>
+  </block>
+</iq>
+#+end_src
+
+服务器返回：
+
+#+begin_src xml
+<iq from='tao@yukuai.com'
+    to='tao@yukuai.com/18753680631361510992256127' id='push3351607152'
+    type='set'>
+  <query xmlns='jabber:iq:privacy'>
+    <list name='Blocked contacts'/>
+  </query>
+</iq>
+<iq id='push3351607152' to='tao@yukuai.com' type='error'>
+  <query xmlns='jabber:iq:privacy'>
+    <list name='Blocked contacts'/>
+  </query>
+  <error type='cancel' code='501'>
+    <feature-not-implemented
+        xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
+  </error>
+</iq>
+<iq from='tao@yukuai.com'
+    to='tao@yukuai.com/18753680631361510992256127' id='push'
+    type='set'>
+  <block xmlns='urn:xmpp:blocking'>
+    <item jid='feng@yukuai.com'/>
+  </block>
+</iq>
+<iq type='result' id='push'/>
+<iq from='tao@yukuai.com'
+    to='tao@yukuai.com/18753680631361510992256127' type='result'/>
+#+end_src
+
+
+场景二、想解除对  feng@yukuai.com 的屏蔽
+
+发送：
+
+#+begin_src xml
+<iq type='set'>
+  <unblock xmlns='urn:xmpp:blocking'>
+    <item jid='feng@yukuai.com'/>
+  </unblock>
+</iq>
+#+end_src
+
+服务器返回：
+
+#+begin_src xml
+<iq from='tao@yukuai.com'
+    to='tao@yukuai.com/18753680631361510992256127' id='push35546661'
+    type='set'>
+  <query xmlns='jabber:iq:privacy'>
+    <list name='Blocked contacts'/>
+  </query>
+</iq>
+<iq id='push35546661' to='tao@yukuai.com' type='error'>
+  <query xmlns='jabber:iq:privacy'>
+    <list name='Blocked contacts'/>
+  </query>
+  <error type='cancel' code='501'>
+    <feature-not-implemented
+        xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
+  </error>
+</iq>
+<iq from='tao@yukuai.com'
+    to='tao@yukuai.com/18753680631361510992256127' id='push'
+    type='set'>
+  <unblock xmlns='urn:xmpp:blocking'>
+    <item jid='feng@yukuai.com'/>
+  </unblock>
+</iq>
+<iq type='result' id='push'/>
+<iq from='tao@yukuai.com'
+    to='tao@yukuai.com/18753680631361510992256127' type='result'/>
+#+end_src
+
+场景三、查询黑名单列表
+
+发送：
+
+#+begin_src xml
+<iq type='get' id='get-blocked-contacts'>
+  <query xmlns='jabber:iq:privacy'>
+    <list name='Blocked contacts'/>
+  </query>
+</iq>
+#+end_src
+
+服务器返回：
+
+#+begin_src xml
+<iq from='tao@yukuai.com'
+    to='tao@yukuai.com/18753680631361510992256127'
+    id='get-blocked-contacts' type='result'>
+  <query xmlns='jabber:iq:privacy'>
+    <list name='Blocked contacts'/>
+  </query>
+</iq>
+#+end_src
+
+
+* 聊天室
+
+** 接口
+
+1. [PHP] 创建聊天室
+2. [PHP] 查询当前用户是否已加入某聊天室
+
+* 好友管理
+
+特性：
+1. 当 A 收到 B 发来的消息时，如果 B 不在 A 的黑名单里。则自动为 A 和 B 建立双向关注。
+
+** 添加好友
+
+备忘录：
+1. IM客户端登录时，应检查 roster, 如发现 subscription='from' 的，表示还未加对方为好友。
+
+场景：账号 tao 加账号 hai 为好友。
+
+*** 1. 设置好友昵称和分组，可在加好友前执行。
+
+#+begin_src xml :title 直接发送 xml 到服务器
+<iq type='set'>
+  <query xmlns='jabber:iq:roster'>
+    <item jid='hai@yukuai.com' name='阿海'>
+      <group>好友</group>
+    </item>
+  </query>
+</iq>
+#+end_src
+
+#+begin_src javascript :title 通过 strophe.js lab 发送 xml 到服务器
+send($iq({type:'set'})
+.c('query',{xmlns:'jabber:iq:roster'})
+.c('item',{jid:'hai@yukuai.com', name:'阿海'})
+.c('group','好友'));
+#+end_src
+
+*好友状态：*
+
+| 客户端 | Jabber ID      | 昵称 | 订阅 | 挂起 | 组   |
+|--------+----------------+------+------+------+------|
+| tao    | hai@yukuai.com | 阿海 | none | none | 好友 |
+| hai    |                |      |      |      |      |
+
+
+*** 2. tao 发送好友请求
+
+*客户端 tao 发送：*
+
+#+begin_src javascript
+send($pres({to:'hai@yukuai.com', type:'subscribe'}));
+#+end_src
+
+#+begin_src xml
+<presence to='hai@yukuai.com' type='subscribe'/>
+#+end_src
+
+*客户端 hai 收到：*
+
+#+begin_src xml
+<presence from='tao@yukuai.com'
+  to='hai@yukuai.com/ykim' type='subscribe'
+  xmlns:stream='http://etherx.jabber.org/streams'
+  xmlns='jabber:client' version='1.0' />
+#+end_src
+
+*好友状态：*
+
+| 客户端 | Jabber ID      | 昵称 | 订阅 | 挂起 | 组   |
+|--------+----------------+------+------+------+------|
+| tao    | hai@yukuai.com | 阿海 | none | out  | 好友 |
+| hai    | tao@yukuai.com |      | none | in   |      |
+
+
+*** 3. hai 确认好友请求
+
+#+begin_src javascript
+send($pres({to:'tao@yukuai.com', type:'subscribed'}));
+#+end_src
+
+*好友状态：*
+
+| 客户端 | Jabber ID      | 昵称 | 订阅 | 挂起 | 组   |
+|--------+----------------+------+------+------+------|
+| tao    | hai@yukuai.com | 阿海 | to   | none | 好友 |
+| hai    | tao@yukuai.com |      | from | none |      |
+
+** TODO 删除好友
+
+
+* APNS
+
+推送策略：所有离线 XMPP 消息，调用 apns_api 接口以实现 apns 推送
+
+apns_api 接口地址定义在 ejabberd.cfg 里 mod_yk_stark 节：
+
+#+begin_src erlang
+{apns_api, "http://yue.lt.yukuai.com/?q=api/apns&uid=~s&message=~s"}
+#+end_src
+
+
+
+* 杂项
+
+** XMPP 服务器选择
+
+openfire 和 ejabberd 都是成熟的方案。选择 ejabberd 是因为其插件开发更
+容易，扩展性更好。
+
+
+
+** PHP XMPP 接口
+
+除直接使用 XMPP 协议和 ejabberd 对话外，为方便使用，还提供了 PHP 接口。
+
+实现方式是借助 redis 的事件发布、订阅机制，使用 redis 服务器来中转 ejabberd 和 PHP
+之间的通信。以使 PHP 直接、高效地调用 ejabberd 的内部函数。
+
+** 服务器时间
+
+<iq type='get' to='yukuai.com' id='time_1'>
+  <time xmlns='urn:xmpp:time'/>
+</iq>
+
+<iq from='yukuai.com' to='ltao@yukuai.com/14208892201361345835763128'
+    id='time_1' type='result'>
+  <time xmlns='urn:xmpp:time'>
+    <tzo>+08:00</tzo>
+    <utc>2013-02-20T08:31:28Z</utc>
+  </time>
+</iq>
+
+我的看法呢：
+服务器对时方案就可以解决绝大部分问题了，对比服务器添加一个处理层的方式，
+资源占用也小不少。
+
+大部分用户的手机时间是对的；
+手机时间不对的少数用户，
+
+
+* 附
+
+** 聊天室 stanza
+
+#+octopress include_code 聊天室相关节 stanza-muc.xml lang:xml

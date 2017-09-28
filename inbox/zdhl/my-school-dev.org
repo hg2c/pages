@@ -1,0 +1,9 @@
+#+OPTIONS: ^:nil
+#+TITLE: 我的大学 API 开发文档(Rev1)
+
+* 代码说明
+
+我的大学的 API 服务用 nodejs 开发。代码位于 /my-school/api , 分为 loopback-ms, agent-ms 两部分
+
+1. loopback-ms，使用 [[http://loopback.io/][LoopBack]]，由 LoopBack 提供所有 Model 和用户登录，权限管理等功能；
+2. agent-ms, 为方便客户端调用而设计的一层，本质上相当于一个别名调用，用于封装业务逻辑。

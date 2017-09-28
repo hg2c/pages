@@ -1,0 +1,114 @@
+---
+deploy: yk
+layout: post
+title: "愉快网约吃饭项目部署说明"
+date: 2013-03-28 10:11
+comments: true
+categories: yk-app-yue
+---
+#+OPTIONS: ^:nil
+
+* 概述
+
+** 约吃饭依赖的服务器环境
+
+| LAMP     | linux+apache+mysql+php                  |
+| redis    | php 借助 redis 与 ejabberd 沟通         |
+| memcache | php 使用的缓存系统                      |
+| ejabberd | xmpp 服务器，用于网页端、手机端实时聊天 |
+
+** 约吃饭相关项目列表
+
+| yk-app-yue   | 约吃饭应用代码。主要开发者：欧应燎，吴勇，杨纪珂，杨海峰，王九宁 |
+| yk-framework | 约吃饭依赖的愉快网PHP框架，主要开发者为于海                      |
+| yk-api       | 约吃饭手机端用到的接口，主要开发者为于海林万泉，张云泉，邱文熙   |
+| yk-im        | 约吃饭聊天系统后端，主要开发者为罗涛                             |
+| YKit         | 约吃饭聊天系统前端，主要开发者为陈颖                             |
+
+* 部署说明
+
+** LAMP
+
+测试服务器上的操作系统为：CentOS release 6.3。
+
+必须安装的 php 相关模块（除了 php-redis 可能需编译安装，其它均可通过 yum 安装）：
+
++ php-mysql-5.4.12-1.el6.remi.x86_64
++ php-xml-5.4.12-1.el6.remi.x86_64
++ php-mbstring-5.4.12-1.el6.remi.x86_64
++ php-pecl-memcache-3.0.7-5.el6.remi.x86_64
++ php-redis
+
+可能需要安装的 php 相关模块：
+
++ php-common-5.4.12-1.el6.remi.x86_64
++ php-cli-5.4.12-1.el6.remi.x86_64
++ php-pecl-igbinary-1.1.2-0.1.git3b8ab7e.el6.remi.x86_64
++ php-pecl-xdebug-2.2.1-2.el6.remi.1.x86_64
++ php-pear-1.9.4-12.el6.remi.1.noarch
++ php-mcrypt-5.4.12-1.el6.remi.x86_64
++ php-pecl-imagick-3.1.0-0.4.RC2.el6.remi.1.x86_64
++ php-pecl-yaml-1.1.0-2.el6.remi.x86_64
++ php-pecl-memcached-2.1.0-6.el6.remi.1.x86_64
++ php-pecl-oauth-1.2.3-1.el6.remi.1.x86_64
++ php-pecl-apc-3.1.14-1.el6.remi.1.x86_64
++ php-devel-5.4.12-1.el6.remi.x86_64
++ php-gd-5.4.12-1.el6.remi.x86_64
++ php-pecl-runkit-1.0.4-0.3.gitd069e23.el6.remi.x86_64
++ php-pdo-5.4.12-1.el6.remi.x86_64
+
+** redis + memcache + ejabberd
+
+直接 yum 安装即可
+
+** yk-app-yue
+
+目前线上运行的约吃饭代码与 yk-app-yue/tag/v2.0 一致。
+
+1. 在 web 服务器里把 yue.yukuai.com 指向目录 src/htdocs/yue；
+
+2. 在 src/htdocs/yue 目录下创建 index.php, 把 require_once ... yk.php 前面的路径改为实际yk-framework 所在路径
+
+#+begin_src php
+<?php
+session_start();
+
+require_once '../../system/yk.php';
+
+define("URL_RES_STATIC", "/res/static");
+require_once APP_ROOT. '/common/functions.php';
+require_once APP_ETC_PATH . PS . 'defines.php';
+header('Content-Type: text/html; charset=utf-8');
+
+//应用启动
+YApplication::init();
+YApplication::run();
+#+end_src
+
+3. 修改配置文件 src/app/yue/etc/web.conf.php 里 Memcache，Redis 的地址为实际地址；
+
+4. 完成。
+
+** yk-framework
+
+无须配置，只要 yk-app-yue 能访问 yk-framework 的目录即可
+
+** yk-api
+
+相关文档由林万泉另行提供
+
+** yk-im
+
+yk-im 是为满足约吃饭的特别需要，和为 php 直接操作 ejabberd 服务器，而开发的 ejabberd 模块。部署步骤为：
+
+1. 把 ejabberd_modules 目录下所有模块复制到 ejabberd 模块目录。centos_x64 下默认为 /usr/lib64/ejabberd/ebin。
+
+2. 在 /etc/ejabberd/ejabberd.cfg 最后添加配置：
+
+#+octopress include_code mod_yk_stark 范例 mod_yk_stark.cfg lang:erlang
+
+** YKit
+
+已集成到 yk-app-yue 项目目录：src/htdocs/yue/res/static/assets/js/ykit/ 下。
+
+集成方法见 Makefile 文件里面的 ykit 任务。

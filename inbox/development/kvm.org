@@ -1,0 +1,143 @@
+* INSTALL
+grep -E 'svm|vmx' /proc/cpuinfo
+yum install qemu-kvm libvirt libvirt-python libguestfs-tools virt-install
+systemctl enable libvirtd && systemctl start libvirtd
+
+lsmod | grep kvm
+kvm_intel             138567  0                                                          │Pool ElasticSearch has been undefined
+kvm                   441119  1 kvm_intel
+
+osinfo-query os
+** 网桥配置
+brctl addbr br0
+Create /etc/sysconfig/network-scripts/ifcfg-br0 and add:
+
+DEVICE=br0
+TYPE=Bridge
+BOOTPROTO=static
+ONBOOT=yes
+NM_CONTROLLED=no
+DELAY=0
+IPADDR=192.168.1.84
+PREFIX=24
+
+Create /etc/sysconfig/network-scripts/ifcfg-em2 and add:
+HWADDR=B0:83:FE:C1:6F:15
+UUID=3047bddf-92b1-416e-ae9f-a6e8280b69cb
+NAME=em2
+TYPE=Ethernet
+BOOTPROTO=none
+ONBOOT=yes
+NM_CONTROLLED=no
+BRIDGE=br0
+
+systemctl restart network
+
+echo net.ipv4.ip_forward = 1 >> /etc/sysctl.conf && sysctl -p /etc/sysctl.conf
+
+docker1001:/root/ninecloud ./bin/kvm-create-es-pool
+
+* 目录
+** 快照
+virsh snapshot-create-as bandle sp1
+virsh snapshot-list bandle
+virsh snapshot-current bandle
+virsh snapshot-revert bandle sp1
+
+** QEMU 镜像文件操作
+
+*** virt-copy-in
+直接复制虚拟化平台上本地磁盘文件到虚拟机磁盘上，类似于cp命令。
+拷贝本地/root/etc.tar.gz文件到虚拟机/root目录下
+
+[root@node1 ~]# virt-copy-in -d oeltest01 /root/etc.tar.gz /root/
+
+*** virt-copy-out
+直接复制虚拟机里面的磁盘文件到本地磁盘上，类似于cp命令。
+(1)拷贝oeltest01虚拟机中的passwd文件到本地/root目录下
+[root@node1 ~]# virt-copy-out -d oeltest01 /etc/passwd /root/
+(2)拷贝oeltest01虚拟机中的/etc/到本地/root目录下
+[root@node1 ~]# virt-copy-out -d oeltest01 /etc /root/
+该命令很有用，也可以直接指定虚拟机磁盘文件进行命令。
+[root@node1 ~]# virt-copy-out -a /data/test01.qcow2 -a /data/test01_add01.qcow2 /etc/sysconfig/network-scripts/ifcfg-eth0 /root/
+
+** 网络编辑
+root [/root] virsh net-edit default
+Network default XML configuration edited.
+
+root [/root] virsh net-define /etc/libvirt/qemu/networks/default.xml
+Network default defined from /etc/libvirt/qemu/networks/default.xml
+
+root [/root] virsh net-destroy default
+Network default destroyed
+
+root [/root] virsh net-start default
+Network default started
+
+root [/root] systemctl restart libvirtd
+root [/root] systemctl restart network
+
+** 克隆
+virt-clone --original centos-7 --name centos-7-tpl --file /vm-images/centos-7-tpl.qcow2
+virt-clone -o k8s -n k8s-m3 -f /vm-images/k8s-m3.qcow2
+
+
+virsh start
+virsh console
+
+hostname set-hostname XX
+ip link show
+vi /etc/sysconfig/network-scripts/ifcfg-eth0
+# HWADDR
+# UUID
+# IPADDR
+ifup eth0
+
+
+
+virsh define /etc/libvirt/qemu/”your vm name.xml”
+
+** start
+virsh start k8s-m3
+virsh autostart --disable k8s
+virsh autostart k8s
+
+virsh suspend k8s
+virsh resume k8s
+
+** shutdown
+virsh shutdown k8s-m3
+virsh destroy k8s-m3
+
+yum install acpid -y
+
+** remove vm
+virsh undefine k8s-m3
+
+** vol
+
+virsh vol-list default
+
+virsh vol-delete --pool default k8s-m3.qcow2
+** migrate
+ virsh migrate vm0 qemu+tcp://192.168.1.200/system  --p2p --tunnelled
+
+
+** 清理
+
+virt-sysprep -d centos-6.5
+
+
+* 链接
+
+http://wangying.sinaapp.com/archives/category/linux/centos-3/kvm
+kvm虚拟机之centos6.5安装配置 KVM篇一
+kvm虚拟机之搭建Bridge方式二
+
+http://openwares.net/tag/kvm
+KVM虚拟化环境高可用方案探讨
+
+[[http://zhoutall.com/archives/535][为openstack定制centos镜像]]
+
+[[http://bingotree.cn/?p=562][KVM学习笔记总结
+]]

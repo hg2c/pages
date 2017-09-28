@@ -1,0 +1,183 @@
+#+TITLE: kube
+#+OPTIONS: toc:2 H:3
+
+https://github.com/GoogleCloudPlatform/kubernetes/releases
+
+* 部署环境
+
++ 操作系统：CENTOS 7
+
+yum install -y docker tmux
+systemctl enable docker
+systemctl start docker
+
+yum install bridge-utils
+
+# scp
+yum localinstall /home/ovswitch/rpmbuild/RPMS/x86_64/openvswitch-2.3.1-1.x86_64.rpm
+systemctl start openvswitch.service
+systemctl -l status openvswitch.service
+
+* 安装 OPENVSWITCH 2.3.1
+
+[root@herge ~] yum -y install wget openssl-devel kernel-devel
+[root@herge ~] yum groupinstall "Development Tools"
+[root@herge ~] adduser ovswitch
+[root@herge ~] su - ovswitch
+[ovswitch@herge ~]$ wget http://openvswitch.org/releases/openvswitch-2.3.1.tar.gz
+[ovswitch@herge ~]$ tar xfz openvswitch-2.3.1.tar.gz
+[ovswitch@herge ~]$ mkdir -p ~/rpmbuild/SOURCES
+
+# Openvswitch’s kernel module is already available in CentOS 7’s 3.10 kernel (also for CentOS 6)
+[ovswitch@herge ~]$ sed 's/openvswitch-kmod, //g' openvswitch-2.3.1/rhel/openvswitch.spec > openvswitch-2.3.1/rhel/openvswitch_no_kmod.spec
+
+[ovswitch@herge ~]$ rpmbuild -bb --without check ~/openvswitch-2.3.1/rhel/openvswitch_no_kmod.spec
+[ovswitch@herge ~]$ exit
+[root@herge ~] yum localinstall /home/ovswitch/rpmbuild/RPMS/x86_64/openvswitch-2.3.1-1.x86_64.rpm
+
+# zm1:/home/ovswitch/rpmbuild/RPMS/x86_64/openvswitch-2.3.1-1.x86_64.rpm
+
+[root@herge ~]# systemctl start openvswitch.service
+[root@herge ~]# systemctl -l status openvswitch.service
+
+
+* 配置 GRE
+
+ip link set dev docker0 down
+ip link del dev docker0
+
+ovs-vsctl add-br obr0
+
+brctl addbr docker0
+brctl addif docker0 obr0
+
+vi /etc/sysconfig/network-scripts/ifcfg-docker0
+DEVICE=kbr0
+ONBOOT=yes
+BOOTPROTO=static
+IPADDR=172.17.1.1
+NETMASK=255.255.255.0
+GATEWAY=172.17.1.0
+USERCTL=no
+TYPE=Bridge
+IPV6INIT=no
+
+vi /etc/sysconfig/network-scripts/route-eth1
+172.17.1.0/24 via 192.168.1.40 dev eth1
+172.17.2.0/24 via 192.168.1.41 dev eth1
+172.17.3.0/24 via 192.168.1.43 dev eth1
+
+iperf3 -s
+iperf3 -c 172.17.1.3 -t 60 -i 2
+
+[ ID] Interval           Transfer     Bandwidth       Retr
+[  4]   0.00-60.00  sec  6.49 GBytes   930 Mbits/sec  912             sender
+[  4]   0.00-60.00  sec  6.49 GBytes   929 Mbits/sec                  receiver
+
+[root@m40]~# ovs-vsctl show
+a4937224-46ee-4a55-91cd-4e3cf061ebde
+    Bridge "obr0"
+        Port "obr0"
+            Interface "obr0"
+                type: internal
+    ovs_version: "2.3.1"
+[root@m40]~# brctl show
+bridge name     bridge id               STP enabled     interfaces
+docker0         8000.561a44977c26       no              vetha651b6d
+                                                        vethbeb2a6a
+
+
+
+为了解决跨 minion 之间 Pod 的通信问题，我们在每个 minion 上安装 Open vSwtich，并使用 GRE 或者 VxLAN 使得跨机器之间 Pod 能相互通信。
+本文使用 GRE，而 VxLAN 通常用在需要隔离的大规模网络中。
+安装完 Open vSwitch 后，接下来便建立minion1和minion2之间的隧道。
+
+
+# 首先在 minion1 和 minion2 上建立 OVS Bridge：
+[root@minion1 ~]# ovs-vsctl add-br obr0
+# 接下来建立gre，并将新建的gre0添加到obr0，在minion1上执行如下命令：
+[root@minion1 ~]# ovs-vsctl add-port obr0 gre0 -- set Interface gre0 type=gre options:remote_ip=192.168.230.5
+ovs-vsctl add-port obr0 vx0 -- set interface vx0 type=vxlan options:remote_ip=192.168.1.40
+
+# 在minion2上执行：
+[root@minion2 ~]# ovs-vsctl add-port obr0 gre0 -- set Interface gre0 type=gre options:remote_ip=192.168.230.4
+
+至此，minion1和minion2之间的隧道已经建立。然后我们在minion1和minion2上创建Linux网桥kbr0替代Docker默认的docker0（我们假设minion1和minion2都已安装Docker），设置minion1的kbr0的地址为172.17.1.1/24， minion2的kbr0的地址为172.17.2.1/24，并添加obr0为kbr0的接口，以下命令在minion1和minion2上执行。
+
+yum install bridge-utils
+
+[root@minion1 ~]# brctl addbr kbr0               //创建linux bridge
+[root@minion1 ~]# brctl addif kbr0 obr0          //添加obr0为kbr0的接口
+[root@minion1 ~]# ip link set dev docker0 down   //设置docker0为down状态
+[root@minion1 ~]# ip link del dev docker0        //删除docker0
+
+为了使新建的kbr0在每次系统重启后任然有效，我们在/etc/sysconfig/network-scripts/目录下新建minion1的ifcfg-kbr0如下：
+
+
+DEVICE=kbr0
+ONBOOT=yes
+BOOTPROTO=static
+IPADDR=172.17.1.1
+
+GATEWAY=172.17.1.0
+USERCTL=no
+TYPE=Bridge
+IPV6INIT=no
+
+同样在minion2上新建ifcfg-kbr0，只需修改ipaddr为172.17.2.1和gateway为172.17.2.0即可，然后执行systemctl restart network重启系统网络服务，你能在minion1和minion2上发现kbr0都设置了相应的IP地址。为了验证我们创建的隧道是否能通信，我们在minion1和minion2上相互ping对方kbr0的IP地址，从下面的结果发现是不通的，经查找这是因为在minion1和minion2上缺少访问172.17.1.1和172.17.2.1的路由，因此我们需要添加路由保证彼此之间能通信。
+
+
+由于通过ip route add添加的路由会在下次系统重启后失效，为此我们在/etc/sysconfig/network-scripts目录下新建一个文件route-eth0存储路由，这里需要注意的是route-eth0和ifcfg-eth0的黑体部分必须保持一致，否则不能工作，这样添加的路由在下次重启后不会失效。为了保证两台minion的kbr0能相互通信，我们在minion1的route-eth0里添加路由172.17.2.0/24 via 192.168.230.5 dev eno16777736，eno16777736是minion1的网卡，同样在minion2的route-eth0里添加路由172.17.1.0/24 via 192.168.230.4 dev eno16777736。重启网络服务后再次验证，彼此kbr0的地址可以ping通，如：
+
+
+[root@minion2 network-scripts]# ping 172.17.1.1
+PING 172.17.1.1 (172.17.1.1) 56(84) bytes of data.
+64 bytes from 172.17.1.1: icmp_seq=1 ttl=64 time=2.49 ms
+64 bytes from 172.17.1.1: icmp_seq=2 ttl=64 time=0.512 ms
+^C
+--- 172.17.1.1 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1002ms
+rtt min/avg/max/mdev = 0.512/1.505/2.498/0.993 ms
+到现在我们已经建立了两minion之间的隧道，而且能正确的工作。下面我们将介绍如何安装Kubernetes APIServer及kubelet、proxy等服务。
+
+
+
+** NOTE
+
+*** 从 192.168.1.40 上通过路由 192.168.1.41，能 ping 172.17.2.1, 不能 ping 172.17.2.11
+cat /etc/sysctl.conf
+net.ipv4.ip_forward = 1
+
+*** 服务 kube-proxy 启动失败
+ifconfig 列出的第一块网卡（通常为eth0）必须有设 IP
+
+*** pod 之间不能联通，比如 redis-slave 连不上 redis-master
+
+注意服务启动顺序(待定)
+
+# Start the appropriate services on master:
+for SERVICES in etcd kube-apiserver kube-controller-manager kube-scheduler; do
+    systemctl restart $SERVICES
+    systemctl enable $SERVICES
+    systemctl status $SERVICES
+done
+
+# Start the appropriate services on minion:
+for SERVICES in kube-proxy kubelet docker; do
+    systemctl restart $SERVICES
+    systemctl enable $SERVICES
+    systemctl status $SERVICES
+done
+
+redis-server --slaveof ${REDIS_MASTER_SERVICE_HOST:-$SERVICE_HOST} $REDIS_MASTER_SERVICE_PORT
+# NOTE: 不能 ping ${REDIS_MASTER_SERVICE_HOST}?
+
+* elk
+curl 192.168.1.41:9200/_cluster/health?pretty=true
+kubectl get replicationController
+kubectl get pod
+kubectl get service
+kubectl get minion
+
+cat /etc/sysconfig/docker
+OPTIONS=--selinux-enabled -H fd:// -b=kbr0

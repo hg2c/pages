@@ -1,0 +1,108 @@
+#+OPTIONS: ^:nil
+* 优惠券接口
+** 数据结构：
+   - yukuai.merchant_coupon 商家优惠券表
+   - yukuai.coupon_attribute_ext 优惠券扩展信息表
+   - yukuai_3g.brand_ref_coupon 品牌优惠券关联表
+   - yukaui.coupon_relev_merch 优惠券支持商户
+   - yukuai.coupon_order_detail 优惠订单明细
+   - yukuai.coupon_order 优惠订单
+   - yukuai.merchant 商家表
+   - yukuai_user.global_user 用户表
+   - yukuai.coupon_market_set 优惠券营销策略配置表
+   - yukuai.coupon_market_total 优惠券统计信息表
+   - yukuai.coupon_order_no_index 订单号序列表
+
+** 接口列表 [0/6]
+  - [ ] 领券接口。(coupon/get)
+    1. 应用列表：微博，微信，erb
+    2. 参数列表： coupon_id （优惠券id）, sales_channel（渠道）, user_pin（用户id）, user_mobile（当前用户电话）
+    3. 流程：
+       + 根据规则创建订单sn,得到order_index
+       + 根据规则创建优惠订单详细sn,得到order_index
+       + 根据sales_channel && coupon_id获取yukaui.coupon_market_set id
+       + 创建用户订单
+       + 得到订单详情创建用户优惠订单详细
+       + 更新type=1序列表的order_index
+       + 更新type=2序列表的order_index
+       + 更新领取优惠券数量
+       + 根据sales_set_id更新yukuai.coupon_market_total领用数量
+       + 发送短信
+    4. sn规则：
+       + 订单号规则 DY23 + YYYYMMDD + 6 * 10000 + index最大值(coupon_order_no_index当前时间)
+       + 优惠券号规则 1 + YYYYMMDD + 6 * 10000 + index最大值(coupon_order_no_index当前时间) + rand(10,99)
+       + 改后优惠券规则 MMDDYY + index最大值不足4位前面补0(coupon_order_no_index当前时间) + rand(0,99)不足二位前面补0
+    5. 查询表：
+       + yukuai.merchant_coupon (where coupon_id = *coupon_id*)
+       + yukuai.coupon_order_no_index (where type = 1 && update_day = date('Y-m-d',time()))
+       + yukuai.coupon_order_no_index (where type = 2 && update_day = date('Y-m-d',time()))
+       + yukuai.coupon_market_set (where sales_channel = *sales_channel* && coupon_id = *coupon_id*)
+    6. 操作表：yukuai.coupon_order && yukaui.coupon_order_detial && yukuai.merchant_coupon
+    7. 数据变化：
+       + coupon_id && order_sn && index && user_mobile && user_pin 创建一个订单得到order_id #coupon_order#
+       + order_id && coupon_id && coupon_sn && coupon_info（订单详情） #coupon_order_detail#
+       + order_index (where type = 1 && update_day = date('Y-m-d',time())) #coupon_order_no_index#
+       + order_index (where type = 2 && update_day = date('Y-m-d',time())) #coupon_order_no_index#
+       + Loaded_num+1 (where coupon_id = *coupon_id*) #merchant_coupon#
+       + receive_num+1 (where sales_set_id = *coupon_market_set.id*)  #coupon_market_total#
+    8. 返回数据：
+       + ['status':1, 'info':[], 'data':[]] #成功#
+       + ['status':0, 'info':[]] #失败#
+    9. 注意：
+       + 如果需要user_pin需自己去生成一个用户
+
+  - [ ] 验证接口。(coupon/valid)
+    1. 应用列表：erb
+    2. 参数列表：merchant_id（商家id）, sales_channel（渠道）, coupon_code（优惠券号码）
+    3. 流程：
+       + 验证优惠券的有效性
+       + 判断是否为商家发行
+       + 判断该券是否已使用、生效、过期
+       + 根据sales_channel && coupon_id获取yukaui.coupon_market_set id
+       + 根据sales_set_id更新yukuai.coupon_market_total使用数量
+       + 进行对该优惠券的改变
+    4. 查询表：
+       + yukuai.coupon_order && yukuai.coupon_order_detail (where coupon_code = *coupon_code*)得到coupon_id
+       + yukuai.coupon_relev_merch (where merchant_id = *merchant_id* && coupon_id = *coupon_id*)
+       + yukuai.coupon_market_set (where sales_channel = *sales_channel* && coupon_id = *coupon_id*)
+    5. 操作表：yukuai.coupon_order_detail && yukuai.coupon_market_total
+    6. 数据变化：
+       + check_status改为1, check_time改为当前时间, merchant_id改为当前商家id
+       + used_num+1 (where sales_set_id = *coupon_market_set.id*)  #coupon_market_total#
+    7. 返回数据：
+       + ['status':1, 'info':[], 'data':[]] #成功#
+       + ['status':0, 'info':[]] #失败#
+
+  - [ ] 新建优惠券接口。(coupon/add)
+    1. 应用列表：xxx
+    2. 参数列表： title （标题）, type （类型）, ……
+    3. 流程：插入品牌优惠券相关表
+    4. 查询表：yukuai_3g.brand_shop
+    5. 操作表：yukuai.merchant_coupon, yukuai.coupon_attribute_ext, yukuai.coupon_relev_merch, yukuai_3g.brand_ref_coupon
+    6. 返回数据：
+       + ['status':1, 'info':[], 'data':['coupon_id':000]] #成功#
+       + ['status':0, 'info':[]] #失败#
+
+  - [ ] 编辑优惠券接口。(coupon/edit)
+    1. 应用列表：xxx
+    2. 参数列表： coupon_id, 其余同coupon/add
+    3. 流程：修改品牌优惠券相关表字段
+    4. 查询表：yukuai_3g.brand_shop
+    5. 操作表：yukuai.merchant_coupon, yukuai.coupon_attribute_ext, yukuai.coupon_relev_merch, yukuai_3g.brand_ref_coupon
+    6. 返回数据：
+       + ['status':1, 'info':[], 'data':[]] #成功#
+       + ['status':0, 'info':[]] #失败#
+
+  - [ ] 详情接口。(coupon/detail) #废弃#
+    1. 应用列表：微博，erb
+    2. 参数列表：coupon_id（优惠券id）, user_pin（用户id）
+    3. 查询表：
+       + yukuai.merchant_coupon && yukuai.coupon_relev_merch && yukuai.merchant (where coupon_id = *coupon_id*)
+       + yukuai.merchant_coupon && yukuai.coupon_relev_merch && yukuai.merchant && yukuai.coupon_order_detail && yukuai.coupon_order (where user_pin = *user_pin*)
+
+  - [ ] 列表接口。(coupon/list) #废弃#
+    1. 应用列表：*
+    2. 参数列表：merchant_id（商家id）, user_pin（用户id）
+    3. 查询表：
+       + yukuai.merchant_coupon && yukuai.coupon_relev_merch && yukuai.merchant (where merchant_id = *merchant_id*)
+       + yukuai.merchant_coupon && yukuai.coupon_relev_merch && yukuai.merchant && yukuai.coupon_order_detail && yukuai.coupon_order (where user_pin = *user_pin*)

@@ -1,0 +1,102 @@
+---
+deploy: yk
+layout: post
+title: "愉快网短信系统客户端调用说明"
+date: 2013-03-04 16:16
+comments: true
+categories:
+---
+#+OPTIONS: ^:nil
+* 概览
+
+愉快网短信系统的调用方式是：向指定 URL POST 所需数据。实际调用如下：
+
+ ------------------------------------------------------------
+ POST: http://sms.lt.yukuai.com/?m=18623191200%2C13896079527&c=%E4%BD%A0%E
+ 4%BB%AC%E5%A5%BD%EF%BC%81&ver=1.1&token=64f980740b4707c973dcc9a3e6ff3778b
+ 81dd0ea&timestamp=1362362522&signature=77b1c49506ad4f5ed91b229e9f23e956
+ ------------------------------------------------------------
+ RESPONSE: {"ok":141125572066743220,"mock":true}
+
+这个实例的意思是：向手机号码: 18623191200, 13896079527 两个号码群发了一条
+短信。各参数详细说明如下：
+
+| 参数名    | 实例                                 | 说明                                                                            |
+|-----------+--------------------------------------+---------------------------------------------------------------------------------|
+| m         | 18623191200,13896079527              | 短信接受方手机号码，如群发手机号码之间用','(半角)隔开，一次群发最多 1000 个号码 |
+| c         | %E4%BD%A0%E4...                      | 短信内容。实例中乱码为 (URL-encoded) ，需小于等于 130字节，65汉字。             |
+| ver       | 1.1                                  | 短信系统接口版本号，目前必须指定为 1.1                                          |
+| token     | 64f980740b4707c973dcc9a3e6ff3778b... | 用户令牌，用于标识身份 (实例中令牌仅供测试，代表用户 test11)                    |
+| timestamp | 1362362522                           | 签名时间。注意：签名 60 秒后失效。                                              |
+| signature | 77b1c49506ad4f5ed91b229e9f23e956     | 签名。根据令牌和密钥等计算，用于身份验证                                        |
+
+短信的发送结果为 json 字符串。
+
+{"ok":141125572066743220} 表示发送成功，且短信网关返回了发送回执：141125572066743220。
+
+注：签名的详细规则，请参考代码
+yk-sms-sample/yk-sms-client/Yk_Sms_Client.php 里的 signToken 函数。
+
+
+* PHP: yk-sms-client 使用说明
+
+为方便调用，封装了 yk-sms-client。使用前，请先明确配置下列项目
+
+| 项目         | 示例常量       | 值                                       | 说明                                                               |
+|--------------+----------------+------------------------------------------+--------------------------------------------------------------------|
+| 短信系统 URL | ZD_SMS_API     | http://sms.yukuai.com/                   | 正式服务器地址                                                            |
+| 版本号       | ZD_SMS_API_VER | 1.1                                      | 目前必须指定为 1.1                                                        |
+| 用户令牌     | ZD_SMS_TOKEN   | 64f980740b4707c973dcc9a3e6ff3778b81dd0ea | 用户令牌，由系统分配。测试时可使用表中这个令牌                     |
+| 用户密钥     | ZD_SMS_SECRET  | cb8c59b07a78187b0cf771da3376fe1b58f44405 | 用户密钥，由系统分配，和用户令牌一一对应。测试时可使用表中这个密钥 |
+
+然后，调用函数 sendSms() 就可以了。如
+
+#+begin_src php
+$result = sendSms('18623191200', '[测试]你好，愉快网！');
+// 群发时，第 1 个参数为手机号码的数组。号码数量要求为小于 1000 个
+$result = sendSms(array('18623191200','13896079527'), '[测试]你们好！');
+#+end_src
+
+* JAVA: yk-sms-client 使用说明
+
+JAVA部分代码由于海整理，稍后提交。使用方法同 PHP。
+
+* 附录
+** 附一：发送失败原因列表
+
+ | 错误                         | 说明       |
+ |------------------------------+------------|
+ | 'illegal_content'            | 含非法字词 |
+ | 'sms_gateway_error'          | 网关报错   |
+ | 'error_version'              | 版本号错误 |
+ | 'unauthorized'               | 未认证     |
+ | 'missing_required_parameter' | 参数缺失   |
+ | 'expired_authentication'     | 认证已过期 |
+ | 'expired_token'              | 令牌已过期 |
+
+示例：
+
+#+begin_src php
+{ fail:'unauthorized' } // 未认证
+{ fail:'missing_required_parameter', extra:'token'} // 必须带 token 参数
+{ fail:'sms_gateway_error', extra:'timeout' } // 网关超时错误
+#+end_src
+
+** 附二：签名规则
+
+#+begin_src php
+/**
+ * 根据令牌，密钥等计算签名字符串
+ *
+ * @param string $token 在短信系统申请到的令牌
+ * @param string $secret 在短信系统申请到的密钥
+ * @param string $timestamp 当前时间戳，如:1362362522
+ *
+ * @return string 签名字符串，用于服务端验证
+ */
+function signToken($token, $secret, $timestamp)
+{
+    $_sig = md5($token. sha1($secret. $timestamp. md5($timestamp. $secret)));
+    return $_sig;
+}
+#+end_src

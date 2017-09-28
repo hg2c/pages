@@ -1,0 +1,191 @@
+---
+deploy: lt
+layout: post
+title: "redis-memcache-gearman"
+date: 2013-03-25 14:57
+comments: true
+categories:
+---
+#+OPTIONS: ^:nil
+
+Redis集群功能说明 http://blog.nosqlfan.com/html/3302.html?ref=rediszt
+
+解密Redis持久化 http://blog.nosqlfan.com/html/3813.html
+
+gearman简介及安装使用 http://www.cnblogs.com/codebean/archive/2011/07/26/2117074.html
+
+[[http://pic002.cnblogs.com/images/2011/96327/2011072612282885.png]]
+
+
+问题到了这里似乎陷入了僵局，看来瞎蒙是没戏了，只好硬着头皮用tcpdump了，
+说硬着头皮是因为我这个山寨OPS对TCP协议实在是不熟悉，但是为了解决问题，
+只能赶鸭子上架了，找一个客户端重现故障，然后在服务端监听：
+
+#+begin_src shell
+shell> tcpdump -i eth0 host <CLIENTIP> and port 80
+#+end_src
+
+不出意外是一大堆天书般的结果，一句话：法海你不懂爱。好在菜鸟有菜鸟的玩
+法，祭出神器：Wireshark，可以通过它来可视化分析tcpdump生成的日志文件：
+
+#+begin_src shell
+shell> tcpdump -w /path/to/log -i eth0 host <CLIENTIP> and port 80
+#+end_src
+
+本例中最终的效果图大致如下所示：
+
+[[http://huoding.com/wp-content/uploads/2013/02/wireshark.jpg]]
+
+
+* TODO awk
+
+前提：日志已经通过logrotate按天切分，其内容类似下面的样子：
+
+#+begin_src bash
+123.123.123.123 - - [01/Jan/2013:00:01:01 +0800] "GET /path HTTP/1.1" 200 123 "-" "Mozilla"
+#+end_src
+
+
+利用AWK，我们可以很方便的计算一天中每分钟的访问量是多少：
+
+#+begin_src bash
+shell> awk -F: '{ count[$2":"$3]++ } END { for (minute in count) print minute, count[minute] }' /path/to/log | sort > count.log
+#+end_src
+
+下面列出生成的count.log文件中的部分数据
+
+#+begin_src bash
+18:55 14450
+18:56 14926
+18:57 15645
+18:58 16678
+18:59 19032
+#+end_src
+
+* TODO Strace
+
+程序运行很慢，我们如何知道到底慢在哪？此时可以利用strace的「r」选项，不过需要注意的是，strace的结果在标准错误里，使用前最好重定向到标准输出。
+
+下面让我们过滤某个PHP进程中操作时间大于0.001秒的操作：
+
+#+begin_src bash
+shell> strace -rp <PID> 2>&1 | awk '$1 > 0.001'
+0.001596 lstat64("/var/www", {st_mode=S_IFDIR|0755, st_size=4096, ...}) = 0
+#+end_src
+
+
+如果问题比较简单，通常这样就够了，但如果问题相对复杂，那么我们仅仅过滤出耗时的操作是不够的，最好附上完整的上下文，此时如果用AWK来做的话，代码会变得很复杂，别忘了我们还有grep，通过它的「A」和「B」选项可以很方便的保存上下文，此外利用它的正则功能，可以模拟判断时间的大小。
+
+下面让我们过滤某个PHP进程中操作时间大于0.001秒的操作，并附上前后两行上下文：
+
+#+begin_src bash
+shell> strace -rp <PID> 2>&1 | grep -E '^[ ]*([1-9]|0\.[1-9]|0\.0[1-9]|0\.00[1-9])' -A 2 -B 2
+0.000081 getcwd("/var/www/script", 4096) = 32
+0.000805 lstat64("/var", {st_mode=S_IFDIR|0755, st_size=4096, ...}) = 0
+0.001596 lstat64("/var/www", {st_mode=S_IFDIR|0755, st_size=4096, ...}) = 0
+0.000105 lstat64("/var/www/script", {st_mode=S_IFDIR|0755, st_size=4096, ...}) = 0
+0.000112 lstat64("/var/www/script/test.php", {st_mode=S_IFREG|0644, st_size=4096, ...}) = 0
+#+end_src
+
+补充：本例中使用的是PHP程序，之所以会出现一堆lstat64操作是因为PHP配置中没有设定合适的realpath_cache_size
+
+
+   1. 不嫌烦的，每次M-x toggle-truncate-lines切换换行与不换行
+   2. 一劳永逸的，M-x customize-option，输入truncate-partial-width-windows，将出来的设置页面中的参数改为off，然后保存(Save for future sessions)
+   3. 另外说一句，M-x auto-fill-mode也是切换换行模式，不过这是要在文章内容里插入回车符号
+
+* http://webd.is/
+
+Webdis is a simple HTTP server which forwards commands to Redis and sends the reply back using a format of your choice.
+
+* phpredis
+
+https://github.com/nicolasff/phpredis The phpredis extension provides an API for communicating with the Redis key-value store.
+
+* redis:sock, zPop, pipeline 推送, sort-join
+
+来源：http://huoding.com/2012/02/29/146
+
+ZSET没有原生的POP操作，所以我们需要模拟实现
+
+#+begin_src php
+<?php
+
+class RedisClient extends Redis
+{
+    const POSITION_FIRST = 0;
+    const POSITION_LAST = -1;
+
+    public function zPop($zset)
+    {
+        return $this->zsetPop($zset, self::POSITION_FIRST);
+    }
+
+    public function zRevPop($zset)
+    {
+        return $this->zsetPop($zset, self::POSITION_LAST);
+    }
+
+    private function zsetPop($zset, $position)
+    {
+        $this->watch($zset);
+
+        $element = $this->zRange($zset, $position, $position);
+
+        if (!isset($element[0])) {
+            return false;
+        }
+
+        if ($this->multi()->zRem($zset, $element[0])->exec()) {
+            return $element[0];
+        }
+
+        return $this->zsetPop($zset, $position);
+    }
+}
+
+?>
+#+end_src
+
+
+所谓PIPELINE，就是省略了无谓的折返跑，把命令打包给服务端统一处理。使用PIPELINE的速度大概是不使用PIPELINE的十倍。
+
+#+begin_src php
+<?php
+
+for ($i = 1; $i <= 100; $i++) {
+    $redis->multi(Redis::PIPELINE);
+    for ($j = 1; $j <= 10000; $j++) {
+        $msgid = ($i - 1) * 10000 + $j;
+        $redis->sAdd('usr:<USRID>:msg', $msgid);
+    }
+    $redis->exec();
+}
+
+?>
+#+end_src
+
+Redis内置的SORT命令类似于SQL中的JOIN：
+
+#+begin_src bash
+redis> HMSET msg:1 title title1 content content1
+redis> SADD usr:123:msg 1
+redis> SORT usr:123:msg GET msg:*->title GET msg:*->content
+#+end_src
+
+* gearman
+
+http://gearman.org/
+
+多语言，远程，异步任务队列
+
+yum install boost-devel curl-devel mysql-devel
+
+tar xzf gearmand-X.Y.tar.gz
+cd gearmand-X.Y
+./configure
+make
+make install
+
+gearman -h localhost -p 4730 -w -f wc -- wc -l
+gearman -h localhost -p 4730 -f wc < /etc/passwd

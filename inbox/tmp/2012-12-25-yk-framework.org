@@ -1,0 +1,100 @@
+#+OPTIONS: ^:nil
+
+#+BEGIN_HTML
+---
+deploy: lt yk
+layout: post
+title: "yk-framework 最佳实践"
+date: 2012-12-25 10:45
+comments: true
+categories:
+---
+#+END_HTML
+
+* 小抄
+
+** 团队介绍
+
+成员一句话简介
+
+**
+
+* 快速上手
+
+** 团队介绍
+
+*** 成员介绍
+
+*** 团队文化
+
+** 开发环境最佳实践
+
+*** UwAmp
+
+*** xx.dev.yukuai.com
+
+** yk-framework 向导
+
+** 发布流程
+
+*** 网络拓扑图
+
+*** 预发布环境
+
+**** PHP
+
+**** JAVA
+
+**** API + 搜索
+
+**** UMS + 工具
+
+** 代码规范与审查
+
+** 技术资源
+
+*** yk-framework 代码生成工具
+
+*** 内部 DNS 服务器：192.168.34.252
+
+
+* PHP大学
+
+本文档是团队内部的各种分享、培训的索引。
+
+** 《软件系统“黑匣子”》——日志系统对软件开发、调试、审查的重要性
+
+** 《图片系统的设计和优化》
+
+** 《复杂排序和持久化排序》
+
+
+* 待整理
+
+公用 smarty 标签和相关模板：
+
+
+| Smarty 标签                | 说明     |
+|----------------------------+----------|
+| \{\{yk_topnav style='2013'}} | 顶部导航 |
+| {{yk_tail style='2013'}}   | 尾部     |
+
+
+注，源码位于：
++ yk-framework/trunk/src/system/share/smarty_plugins
++ yk-framework/trunk/src/template/\_common\_
+
+
+src/app/yue/controller/Date.controller.php
+    public function doGo()
+    {
+        return $this->toView('show', array());
+    }
+
+src/app/yue/view/DateGo.view.php
+src/template/yue/date/go.tpl
+
+        header('Content-Type: text/html; charset=utf-8');
+
+
+ sed -i 's#^\([ ]*\)<\(link[^>]*\)>[ ]*$#\1<\2/>#' go.tpl

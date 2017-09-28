@@ -1,0 +1,57 @@
+https://raw.githubusercontent.com/github/gitignore/master/Android.gitignore
+
+maven {
+url 'http://maven.oschina.net/content/groups/public/'
+}
+
+
+* sample
+https://github.com/dustin-graham/ucad_twitter_retrofit_sample
+
+* unittest
+http://robolectric.org/
+
+http://stackoverflow.com/questions/32374508/how-to-unit-test-retrofit-api-calls
+http://mdswanson.com/blog/2013/12/16/reliable-android-http-testing-with-retrofit-and-mockito.html
+I test my Retrofit callbacks using Mockito, Robolectric and Hamcrest libraries.
+
+http://www.jianshu.com/p/03118c11c199
+在Android Studio中进行单元测试和UI测试
+
+* project template
+
+https://github.com/nenick/android-gradle-template
+
+
+* retrofit
+https://futurestud.io/blog/retrofit-using-the-log-level-to-debug-requests/
+Logging in Retrofit 2
+
+http://yat3s.com/2015/09/16/retrofit/
+Android Retrofit框架的使用和个人见解
+
+http://www.cnblogs.com/laiqurufeng/p/4483658.html
+Retrofit的使用教程(一)
+
+http://www.jcodecraeer.com/a/anzhuokaifa/androidkaifa/2015/0915/3460.htmlRetrofit
+Retrofit 2.0：有史以来最大的改进
+
+* stetho - A debug bridge for Android applications
+http://facebook.github.io/stetho/
+
+http://tech.luffyjet.com/2015/04/08/facebook-stetho-okhttp-study/
+Facebook Stetho 使用学习
+
+* mock
+Mockito
+
+
+* android layout preview
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    ...
+
+<EditText
+    tools:text="sample"

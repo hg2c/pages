@@ -1,0 +1,364 @@
+---
+deploy: yk lt
+layout: post
+title: "愉快网约吃饭代码回顾与数据结构分享"
+date: 2013-03-15 09:39
+comments: true
+categories: review
+---
+#+OPTIONS: ^:nil
+
+以下内容，为PHP团队在愉快网约吃饭项目中，很好用的一些设计等，作为干货分享出来。
+
+* VO:View-Object
+
+VO 本是持久性框架中很重要的一个概念，约吃饭项目中主要用于传输界面所需
+数据。
+
+1. 整体性。代表一个单元的显示对象；
+
+2. 集中处理显示逻辑；
+
+3. 集中处理缓存策略；
+
+4. 延迟读取并缓存耗时较长的属性。
+
+#+begin_src php
+// 示例@yk-app-ycf/trunk/src/app/ycf/controller/Party.controller.php
+$party = Ycf::getParty($pid);
+return array('msg'=>'show','data' =>$party);
+#+end_src
+
+
+* MVVM:Model-View-View Model
+
+MVVM 是在做 WebIM 前端实验中用到 knockjs 而遇到的一个概念。
+knockjs 确实是一个可大幅提高前端生产力的利器。
+
+MVVM 简介：
+
+1. model: 应用所需业务数据。
+
+2. view model: 显示所需的数据和方法（增删改）。不是持久化层，不含 UI。
+
+3. view: 显示 view model，发送命令给 view model，随 view model 变动而更新。
+
+** knockjs
+
+WebIM 实验用到的所有源代码：
+
+#+begin_src javascript
+var X = {};
+var im;
+
+X.Group = function(data) {
+    var self = this;
+    self.name    = ko.observable(data.name);
+    self.members = ko.observableArray(data.members);
+    self.membersCount = ko.computed(function() {
+        return self.members().length;
+    });
+}
+
+X.User = function(data) {
+    var self = this;
+    self.nickname    = ko.observable(data.nickname);
+    self.jid = ko.observable(data.jid);
+    self.logs = ko.observableArray([]);
+    self.chat = function() {
+        im.currentUser(self);
+    };
+}
+
+X.Message = function(data) {
+    this.body = ko.observable(data.body);
+}
+
+var G = {
+    group: function(name) {
+        return new X.Group({
+            name: name,
+            members: []
+        });
+    },
+    user: function(name) {
+        return new X.User({
+            nickname: name,
+            jid: name
+        });
+    },
+    message: function(body) {
+        return new X.Message({
+            body: body
+        });
+    }
+};
+
+function IMViewModel() {
+    var self = this;
+    self.groups = ko.observableArray();
+
+    self.currentUser = ko.observable();
+    self.newMessage = ko.observable();
+
+    self.send = function() {
+        self.currentUser().logs.push(G.message(self.newMessage()));
+    }
+}
+
+$(function() {
+    var im = new IMViewModel();
+    ko.applyBindings(im);
+    im.groups([G.group('Friends'), G.group('Banned')]);
+    var tao = G.user('tao');
+    tao.logs([G.message(1), G.message(2)]);
+    im.groups()[0].members.push(tao);
+    var feng = G.user('feng');
+    feng.logs([G.message(3), G.message(4)]);
+    im.groups()[0].members.push(feng);
+    window.im = im;
+});
+
+// im.groups.push(G.group('好友'))
+// im.groups()[0].members.push(G.user('峰'));
+#+end_src
+
+#+begin_src html
+<meta http-equiv="Content-Type" content="text/html;charset=UTF-8" />
+<script type='text/javascript'
+        src='/lib/knockout/knockout-2.2.1.js'></script>
+<script type='text/javascript'
+        src='/lib/jquery/jquery-1.9.1.js'></script>
+
+<h3>聊天窗口（聊天记录）</h3>
+
+<div data-bind="with: currentUser">
+  <h4>正在和 <span data-bind="text: jid"></span> 聊天</h4>
+  <ul data-bind="foreach: logs">
+    <li>
+      <input data-bind="value: body" />
+    </li>
+  </ul>
+</div>
+
+<form data-bind="submit: send">
+    chat: <input data-bind="value: newMessage" placeholder="hi" />
+    <button type="submit">Send</button>
+</form>
+
+<h3>Groups</h3>
+
+<ul data-bind="foreach: groups">
+  <li>
+    <input data-bind="value: name" />
+    <input data-bind="value: membersCount" />
+    <ul data-bind="foreach: members">
+      <li>
+        <input data-bind="value: jid" />
+        <button data-bind="click: chat">Chat</button>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<script type='text/javascript' src='im.js'></script>
+#+end_src
+
+[[http://lab.luotao.org/knockout-im/im.htm][knockout-im 演示地址]]
+
+
+* VO2:View-Model
+
+VO2 仍在思考中，初步设想为：
+
+1. 分离数据和魔术方法；
+
+2. 缓存纯数据，如 json 以便跨语言使用；
+
+3. 继承关系的设计？
+
+
+* Route
+
+路由设计，是参与张云泉的《Rewrite 分享》时，受启发想到的一个设计，主要
+特点是：
+
+1. 在 .htaccass 里只需写一条规则，转向不存在的文件到 index.php；
+2. 使用 php 数组配置 URL 模式，省去 xml 解析时间；
+3. 使用函数 route 解析 URL，主要利用 $_SERVER['REQUEST_URI']；
+4. 使用函数 url(方法名，方法参数)，把方法还原为 URL。
+
+#+begin_src php
+// http://www.yukuai.com/good-music-a-2.html <=> good.detail(music,a,2)
+function route()
+{
+    $uri = $_SERVER['REQUEST_URI'];
+
+    $urlpatterns = array(
+        '^/tag/(.+)/(.+).html$' => 'tag.list',
+        '^/(.+?)/(.+?)/(.+?)$' => 'test.show',
+        '^/good-(.+?)-(.+?)-(.+?).html$' => 'good.detail',
+    );
+
+    foreach ($urlpatterns as $pattern => $action) {
+        $regex = "@$pattern@i";
+        if (preg_match($regex, $uri, $matches)) {
+            preg_match('@^(.+)\.(.+)$@', $action, $act_slice);
+            array_shift($matches);
+            echo ''. $action.'('.implode(',',$matches).');'."\n";
+            return;
+        }
+    }
+    echo 'Unkowen Url:'. $uri."\n";
+}
+
+route();
+
+
+function url()
+{
+    $args = func_get_args();
+    $action = array_shift($args);
+
+    $url = '^/good-(.+?)-(.+?)-(.+?).html$';
+    $pattern = '/(\(.+?\))/';
+
+    foreach ($args as $arg) {
+        $url = preg_replace($pattern, $arg, $url, 1);
+    }
+
+    $url = preg_replace('/(^\^|\$$)/', '', $url);
+    return $url;
+}
+
+echo url('good.detail', 'music', 'a', 3);
+#+end_src
+
+运行结果：
+
+[[{{ site.url }}/asset/image/route-demo.png]]
+
+.htaccass 配置：
+
+#+begin_src text
+Options +FollowSymLinks
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule	^(.*)$	index.php [QSA,L]
+#+end_src
+
+
+* PHP-Redis-XMPP (ejabberd)
+
+在聊天服务器的开发中，需要 PHP 和 XMPP 通信。
+
+** PHP-XMPP
+
+最初的方案是建立 php xmpp client，与 xmpp 外部接口通信。如图：
+
+[[{{ site.url }}/asset/image/php-xmpp.png]]
+
+这个方案的致命缺陷是：client 登录 XMPP 时费时较久，甚至需要，1~2秒。且
+难以批量执行命令。如需要调取 php client 同时注册20个新用户，费时可能相
+当久。
+
+实际代码参见：
+1. trunk/src/app/yue/common/XMPP*
+2. trunk/src/app/yue/common/IM*
+
+** PHP-Redis-XMPP
+
+改进后的方案，是利用 redis 的 pub/sub 机制和 blpop 函数，直接快速地和
+xmpp 内部打交道，可以很方便地执行各种命令，并返回执行结果。
+
+[[{{ site.url }}/asset/image/php-redis-xmpp.png]]
+
+#+begin_src php
+$cli = 'register -u user1 -p pass1 -u user2 -p pass2';
+$result = prc_command($cli);
+#+end_src
+
+#+begin_src php
+function prc_command($cli)
+{
+    $redis = YK_Redis::instance();
+    $callback = 'prc.'.uniqid();
+
+    $redis->publish('im-sub:yukuai.com', $cli.' -c '.$callback);
+    $result = $redis->blPop($callback, 2);
+    return count($result) === 2 ? $result[1] : null;
+}
+#+end_src
+
+
+* yConfig
+
+用途是把 PHP 变量暴露给 Javascript，如登录状态，以便在 Javascript 里使
+用。
+
+#+begin_src php
+// trunk/src/app/yue/common/Yue/Controller.php
+$this->setJsOption('logined', $this->isLogin());
+#+end_src
+
+#+begin_src javascript
+var yConfig = {"logined":true};
+
+function yconf(key) {
+  if (!window['yConfig']) {
+    alert('未引入 js/config.');
+    return false;
+  }
+  if (yConfig.hasOwnProperty(key)) {
+    return yConfig[key];
+  } else {
+    alert('必须定义 yConfig 对象并配置属性：' + key + '！');
+  }
+}
+
+if (yconf('login')) {}
+#+end_src
+
+
+* FirePHP
+
+开启后，可实时在线查看各种调试信息。
+
+
+* Make
+
+用于自动构建，如示例中的 ykit 任务，用来获取、编译最新版的 ykit 代码到约
+吃饭项目。
+
+#+begin_src makefile
+.PHONY : ykit publish
+
+YKIT_ROOT = /y/www/yk/YKit
+
+ykit:
+	cd ${YKIT_ROOT} && svn up
+	rm ${YKIT_ROOT}/ykit -rf
+	cd ${YKIT_ROOT}/tools && ./build.sh
+	cd ${YKIT_ROOT}/ykit && find . -name .svn | xargs rm -rf
+	cp -R ${YKIT_ROOT}/ykit/. src/htdocs/yue/res/static/assets/js/ykit/
+
+publish:
+	svn up
+	cd bin/ && ./publish-to-www.sh
+#+end_src
+
+
+* 原则
+
+1. 缓存。以空间换时间；
+2. 重构。去除重复代码;
+3. 文档。markdown, org-mode.
+
+[[{{ site.url }}/asset/image/orgmode-demo.png]]
+
+
+* 参考
+
+1. [[http://knockoutjs.com/index.html][knockout.js]]
+2. [[http://redis.io/documentation][Redis Documentation]]
+3. [[https://github.com/nicolasff/phpredis][A PHP extension for Redis]]

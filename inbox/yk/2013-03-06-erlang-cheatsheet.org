@@ -1,0 +1,423 @@
+---
+deploy: yk lt
+layout: post
+title: "erlang-cheatsheet"
+date: 2013-03-06 14:28
+comments: true
+---
+#+OPTIONS: ^:nil
+* Starting Out
+
+$ erl #Shell
+
+erlang shell 内置的编辑器基于 emacs 的子集。
+
+C-g 切换用户
+
+
+* Starting Out (for real)
+
+** 变量
+
++ 以大写字母开头
++ 不可变的变量
++ _ 为唯一的变量
+
+= 为数学等式，而非赋值。
+
+#+begin_src erlang
+1> One.
+ * 1: variable 'One' is unbound
+2> One = 1.
+1
+3> Un = Uno = One = 1.
+1
+4> Two = One + One.
+2
+5> Two = 2.
+2
+6> Two = Two + 1.
+ ** exception error: no match of right hand side value 3
+7> two = 2.
+ ** exception error: no match of right hand side value 2
+#+end_src
+
+f(). 可清除所有已绑定的变量
+
+
+** 原子
+
++ 小写字母开头
++ 不可动态创建
++ ok.
+
+保留关键字：
+after and andalso band begin bnot bor bsl bsr bxor case catch cond div
+end fun if let not of or orelse query receive rem try when xor
+
+
+** 逻辑比较
+
+#+begin_src erlang
+6> 5 =:= 5.
+true
+7> 1 =:= 0.
+false
+8> 1 =/= 0.
+true
+9> 5 =:= 5.0.
+false
+10> 5 == 5.0.
+true
+11> 5 /= 5.0.
+false
+#+end_src
+
+比较顺序：
+number < atom < reference < fun < port < pid < tuple < list < bit string
+
+#+begin_src erlang
+14> 0 == false.
+false
+15> 1 < false.
+true
+#+end_src
+
+
+** 元组
+
+{Element1, Element2, ..., ElementN}.
+
+
+** 列表
+
+[Element1, Element2, ..., ElementN]
+
+增删列表: ++ -- 运算顺序是从右到左
+
+#+begin_src erlang
+5> [1,2,3] ++ [4,5].
+[1,2,3,4,5]
+9> [1,2,3] -- [1,2] -- [3].
+[3]
+10> [1,2,3] -- [1,2] -- [2].
+[2,3]
+#+end_src
+
+[Head|Tail]. 或用内建函数获取头、尾：
+
+#+begin_src erlang
+11> hd([1,2,3,4]).
+1
+12> tl([1,2,3,4]).
+[2,3,4]
+#+end_src
+
+注：内建函数不一定用纯 erlang 实现，比如可能是用 c 定义。
+
+
+** 列表内运算
+
+NewList = [Expression || Pattern <- List, Condition1, Condition2, ...
+ConditionN].
+
+#+begin_src erlang
+2> [X || X <- [1,2,3,4,5,6,7,8,9,10], X rem 2 =:= 0].
+[2,4,6,8,10]
+5> [X+Y || X <- [1,2], Y <- [2,3]].
+[3,4,4,5]
+#+end_src
+
+NewList = [Expression || GeneratorExp1, GeneratorExp2, ...,
+GeneratorExpN, Condition1, Condition2, ... ConditionM].
+
+#+begin_src erlang
+6> Weather = [{toronto, rain}, {montreal, storms}, {london, fog},
+6>            {paris, sun}, {boston, fog}, {vancouver, snow}].
+[{toronto,rain},
+{montreal,storms},
+{london,fog},
+{paris,sun},
+{boston,fog},
+{vancouver,snow}]
+7> FoggyPlaces = [X || {X, fog} <- Weather].
+[london,boston]
+#+end_src
+
+
+** TODO 比特语法
+
+* 模块
+
+Module:Function(Arguments).
+
+** 模块定义
+
+成模块，需定义两件事：函数和属性。
+
+属性是用于描述模块的元数据，包括：
++ 模块名
++ 模块接口（外部只能调用通过 -export 定义了的接口函数）
++ 代码作者
++ 等
+
+属性用 -Name(Attribute). 定义。如：
++ -module(Name).
++ -export([Function1/Arity, Function2/Arity, ..., FunctionN/Arity]).
+
+#+begin_src erlang
+-export([add/2]).
+
+add(A,B) ->
+    A + B.
+#+end_src
+
+导入函数：-import(Module, [Function1/Arity, ..., FunctionN/Arity]).
+
+定义宏：-define(MACRO, some_value)
+
+** 模块编译
+
+#+begin_src erlang
+1> cd("/path/to/where/you/saved/the-module/").
+"Path Name to the directory you are in"
+ok
+2> c(useless).
+{ok,useless}
+3> useless:add(7,2).
+9
+8> c(useless, [debug_info, export_all]).
+{ok,useless}
+#+end_src
+
+export_all 选项会忽略 -export 而导出所有函数，以便调试。
+编译选项可定义在模块里面：-compile([debug_info, export_all]).
+
+hipe:c(Module,OptionsList). 可编译模块为原生码，以提高运行速度。
+
+#+begin_src erlang
+9> useless:module_info().
+[{exports,[{add,2},
+{hello,0},
+{greet_and_add_two,1},
+{module_info,0},
+{module_info,1}]},
+{imports,[]},
+{attributes,[{vsn,[174839656007867314473085021121413256129]}]},
+{compile,[{options,[]},
+{version,"4.6.2"},
+{time,{2009,9,9,22,15,50}},
+{source,"/home/ferd/learn-you-some-erlang/useless.erl"}]}]
+10> useless:module_info(attributes).
+[{vsn,[174839656007867314473085021121413256129]}]
+#+end_src
+
+vsn 是版本号的意思，可用于代码热部署等。
+
+* 函数语法
+
+** 模式匹配
+
+#+begin_src erlang
+function greet(Gender,Name)
+    if Gender == male then
+        print("Hello, Mr. %s!", Name)
+    else if Gender == female then
+        print("Hello, Mrs. %s!", Name)
+    else
+        print("Hello, %s!", Name)
+end
+#+end_src
+
+模式匹配特性：
+
+#+begin_src erlang
+greet(male, Name) ->
+    io:format("Hello, Mr. ~s!", [Name]);
+greet(female, Name) ->
+    io:format("Hello, Mrs. ~s!", [Name]);
+greet(_, Name) ->
+    io:format("Hello, ~s!", [Name]).
+#+end_src
+
+io:format 输出格式参考：[[http://erlang.org/doc/man/io.html#format-3][官方 io:format 文档]]
+
+** 门卫
+
+用于协助模式匹配，条件组合有两种：
++ ',' -> andalso
++ ';' -> orelse （第一个失败就试第二个，直到有一个成功或全部失败）
+
+#+begin_src erlang
+%% from 16 years old up to 104 years old
+right_age(X) when X >= 16, X =< 104 -> true;
+right_age(_) -> false.
+
+wrong_age(X) when X < 16; X > 104 -> true;
+wrong_age(_) -> false.
+#+end_src
+
+** TODO If
+
+** TODO case
+
+** case/if/function
+
+* Types (or lack thereof)
+
+** 动态强类型
+
+#+begin_src erlang
+1> 6 + "1".
+** exception error: bad argument in an arithmetic expression
+in operator  +/2
+called as 6 + "1"
+#+end_src
+
+** 类型转换
+
+#+begin_src erlang
+1> erlang:list_to_integer("54").
+54
+2> erlang:integer_to_list(54).
+"54"
+3> erlang:list_to_integer("54.32").
+** exception error: bad argument
+in function  list_to_integer/1
+called as list_to_integer("54.32")
+4> erlang:list_to_float("54.32").
+54.32
+5> erlang:atom_to_list(true).
+"true"
+6> erlang:list_to_bitstring("hi there").
+<<"hi there">>
+7> erlang:bitstring_to_list(<<"hi there">>).
+"hi there"
+#+end_src
+
+#+begin_src erlang
+atom_to_binary/2, atom_to_list/1, binary_to_atom/2,
+binary_to_existing_atom/2, binary_to_list/1, bitstring_to_list/1,
+binary_to_term/1, float_to_list/1, fun_to_list/1, integer_to_list/1,
+integer_to_list/2, iolist_to_binary/1, iolist_to_atom/1,
+list_to_atom/1, list_to_binary/1, list_to_bitstring/1,
+list_to_existing_atom/1, list_to_float/1, list_to_integer/2,
+list_to_pid/1, list_to_tuple/1, pid_to_list/1, port_to_list/1,
+ref_to_list/1, term_to_binary/1, term_to_binary/2 and tuple_to_list/1.
+#+end_src
+
+** TODO 类型检查
+
+** TODO For Type Junkies
+
+* 递归
+
+** 认识递归
+
+函数式语言通常不提供 for, while，而用递归来实现循环。
+
+#+begin_src erlang
+fac(N) when N == 0 -> 1;
+fac(N) when N > 0  -> N*fac(N-1).
+#+end_src
+
+** 求长
+
+#+begin_src erlang
+len([]) -> 0;
+len([_|T]) -> 1 + len(T).
+#+end_src
+
+** 求长（尾部递归版）
+
+#+begin_src erlang
+tail_fac(N) -> tail_fac(N,1).
+
+tail_fac(0,Acc) -> Acc;
+tail_fac(N,Acc) when N > 0 -> tail_fac(N-1,N*Acc).
+
+tail_fac(4)    = tail_fac(4,1)
+tail_fac(4,1)  = tail_fac(4-1, 4*1)
+tail_fac(3,4)  = tail_fac(3-1, 3*4)
+tail_fac(2,12) = tail_fac(2-1, 2*12)
+tail_fac(1,24) = tail_fac(1-1, 1*24)
+tail_fac(0,24) = 24
+#+end_src
+
+区别在于：内存里始终只需要保存两个变量。
+
+#+begin_src erlang
+tail_len(L) -> tail_len(L,0).
+
+tail_len([], Acc) -> Acc;
+tail_len([_|T], Acc) -> tail_len(T,Acc+1).
+#+end_src
+
+** 更多递归函数
+
+*** duplicate/2
+建立一个列表，里面含 N 个 Term
+
+#+begin_src erlang
+duplicate(0,_) ->
+    [];
+duplicate(N,Term) when N > 0 ->
+    [Term|duplicate(N-1,Term)].
+
+
+tail_duplicate(N,Term) ->
+    tail_duplicate(N,Term,[]).
+
+tail_duplicate(0,_,List) ->
+    List;
+tail_duplicate(N,Term,List) when N > 0 ->
+    tail_duplicate(N-1, Term, [Term|List]).
+#+end_src
+
+*** reverse/1
+反转列表
+
+#+begin_src erlang
+reverse([]) -> [];
+reverse([H|T]) -> reverse(T)++[H].
+
+tail_reverse(L) -> tail_reverse(L,[]).
+
+tail_reverse([],Acc) -> Acc;
+tail_reverse([H|T],Acc) -> tail_reverse(T, [H|Acc]).
+#+end_src
+
+*** sublist/2
+从列表取 N 个 Term 组成子列表
+
+#+begin_src erlang
+sublist(_,0) -> [];
+sublist([],_) -> [];
+sublist([H|T],N) when N > 0 -> [H|sublist(T,N-1)].
+
+%% tail_sublist(L, N) -> tail_sublist(L, N, []).
+tail_sublist(L, N) -> reverse(tail_sublist(L, N, [])).
+
+tail_sublist(_, 0, SubList) -> SubList;
+tail_sublist([], _, SubList) -> SubList;
+tail_sublist([H|T], N, SubList) when N > 0 ->
+    tail_sublist(T, N-1, [H|SubList]).
+#+end_src
+
+** TODO 快速排序
+
+** TODO More than lists
+
+** TODO Thinking recursively
+
+* TODO 高阶函数
+
+** 函数式编程
+
+函数语言的一个重要特征是可以函数为参数。
+
+* TODO 错误和异常
+
+* TODO Functionally Solving Problems
+
+* TODO A Short Visit to Common Data Structures

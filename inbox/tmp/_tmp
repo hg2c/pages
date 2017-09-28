@@ -1,0 +1,65 @@
+#+begin_src plantuml :file erb_sequence.png :cmdline -charset UTF-8
+@startuml
+
+Client -> Server: 初始化：请求系统配置，列表数据
+Server --> Client: 服务器时间
+Server --> Client: 商家的楼层配置(area)
+Server --> Client: 商家的房桌容纳人数配置(capacity)
+Server --> Client: 首页桌台列表、订单数据
+
+Client -> Server: 轮询列表数据
+
+@enduml
+#+end_src
+
+#+results:
+[[file:erb_sequence.png]]
+
+- area
+  - id
+  - name
+- table
+  - id
+  - name
+  - capacity
+  - area
+  - locked
+  - type
+  - status
+  - order
+    - id
+- id
+- name
+- critical
+- orderCount
+to be confirmed
+
+
+global_user < site_user
+global_user < biz_user
+
+biz_user < merchant
+merchant < cy_merchant
+merchant < yl_merchant
+
+band < cy_merchant
+
+
+表 15-1: 处理状态的方法的对比 (P195@《SOA实践指南》)
+
+ |            | 状态在前端 | 状态在服务 | 状态在后端 |
+ |------------+------------+------------+------------|
+ | 在前端存储 | 所有状态   | ID         | ID         |
+ | 服务       | 无状态     | 有状态     | 无状态     |
+ | 在后端存储 | /          | /          | 所有状态   |
+ | 支持多通道 | 否         | 是         | 是         |
+
+无状态
+幂等
+
+
+* 附录
+
+** 相关产品原型
+[[http://ucd.yukuai.com/prd/2013/%25E5%2595%2586%25E6%2588%25B7APP%2520v1.2_1011_%25E6%25BD%2598%25E5%25A9%25B7%25E5%25A9%25B7/][商户APP v1.2_1011_潘婷婷]]
+[[http://ucd.yukuai.com/prd/2013/UMS%25E5%2593%2581%25E7%2589%258C%25E7%25AE%25A1%25E7%2590%2586_0726_%25E6%25BD%2598%25E5%25A9%25B7%25E5%25A9%25B7/][UMS品牌管理_0726_潘婷婷]]

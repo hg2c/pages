@@ -1,0 +1,67 @@
+* preflight
+
+** sudoer
+echo "{username} ALL = (root) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/{username}
+sudo chmod 0440 /etc/sudoers.d/{username}
+
+echo "luotao ALL = (root) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/luotao
+sudo chmod 0440 /etc/sudoers.d/luotao
+
+** ntp
+
+sudo apt-get install ntp
+
+** iptables
+
+sudo apt-get install iptables-persistent
+
+sudo iptables -A INPUT -i eth0 -p tcp -s 192.168.1.0/24 --dport 6789 -j ACCEPT
+sudo iptables -A INPUT -i eth0 -m multiport -p tcp -s 192.168.1.0/24 --dports 6800:6810 -j ACCEPT
+
+sudo iptables-save | sudo tee /etc/iptables/rules.v4
+
+* x
+
+0.87 GIANT
+
+vim /etc/yum.repos.d/ceph.repo
+
+[ceph-noarch]
+name=Ceph noarch packages
+baseurl=http://ceph.com/rpm-giant/el7/noarch
+enabled=1
+gpgcheck=1
+type=rpm-md
+gpgkey=https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc
+
+
+sudo yum update && sudo yum install ceph-deploy
+
+
+/root/ceph-cluster ceph-deploy new bandle
+
+* ubuntu
+
+[admin-node]
+
+wget -q -O- 'https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/release.asc' | sudo apt-key add -
+
+# echo deb http://ceph.com/debian-{ceph-stable-release}/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
+
+echo deb http://ceph.com/debian-giant/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
+
+sudo apt-get update && sudo apt-get install ceph-deploy
+
+
+ssh u3 sudo mkdir -p /var/local/osd0
+ssh u4 sudo mkdir -p /var/local/osd1
+
+ceph-deploy osd prepare u3:/var/local/osd0 u4:/var/local/osd1
+ceph-deploy osd activate u3:/var/local/osd0 u4:/var/local/osd1
+
+ceph-deploy admin u1 u2 u3 u4
+sudo chmod +r /etc/ceph/ceph.client.admin.keyring
+ceph health
+
+
+sudo iptables -A INPUT -i eth0 -p tcp -s 192.168.1.0/24 --dport 6789 -j ACCEPT

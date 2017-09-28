@@ -1,0 +1,137 @@
+---
+deploy: yk
+layout: post
+title: "愉快网 XMPP 协议扩展"
+date: 2013-03-06 10:44
+comments: true
+categories:
+---
+#+OPTIONS: ^:nil
+
+YK-IM (愉快网聊天系统) 需求的下列特性，XMPP 协议不直接支持，需进行扩展：
+
+1. 消息发送时间以服务器为准；
+2. 信息已读回执；
+3. 用户头像与愉快网统一；
+4. 加入黑名单同时保存拉黑时间；
+5. 加入黑名单同时同步到数据库。
+
+实现这些特性通常需要 PHP 和 Xmpp 服务器交互，方案有四：
+
+1. 参照 Jabber Component Protocol (XEP-0114) 开发 XMPP 组件服务器 (PHP
+   可使用 Jaxl 库)；
+2. 使用我的设计：利用 Redis 服务器事件，用 PHP 通过 Redis 中转直接调用
+   Xmpp 服务器；
+3. 开发 Xmpp 服务器模块，直接扩展 Xmpp 协议实现；
+4. 使用 PHP 开发 Xmpp 客户端，代理客户端操作。
+
+
+方案 1 开发难度最大，方案 4 最简单但是运行效率最低。综合运行效率和开发
+成本考虑，方案 2, 3 是最优的。
+
+我的建议是当不得不调用 php 接口时，使用方案 2；
+当可以不调用 php 接口时，使用方案 3 更直接，比方案 2 更加高效。
+
+
+* 给聊天消息添加服务器时间戳
+
+这个功能的用途是，为每一条消息添加服务器时间戳，以便客户端精准显示消息时间。
+为便于客户端处理，功能的实现参考《[[http://xmpp.org/extensions/xep-0160.html][XEP-0160: Best Practices for
+Handling Offline Messages]]》。统一以离线消息的 xml 格式提供时间戳。
+
+实例：(添加了 delay 节中的时间戳)
+
+#+begin_src xml
+<message from='feng@yukuai.com/38931185771362537343269116'
+         to='tao@yukuai.com/22989484991362537342693536' type='chat'
+         id='purple125802e0'>
+  <active xmlns='http://jabber.org/protocol/chatstates'/>
+  <body>测试消息，添加时间戳</body>
+  <delay xmlns='urn:xmpp:delay' from='yukuai.cn'
+         stamp='2013-03-06T02:44:09Z'>Offline Storage</delay>
+</message>
+#+end_src
+
+注：开发中解析 message 节时，应假定 delay 节可能不存在。
+
+
+Jabber Component Protocol (XEP-0114) documents how XMPP protocol can
+be used to communicate between servers and “external” components over
+the Jabber network. XMPP components “bind” to a domain, usually a
+sub-domain of the main XMPP service
+
+http://abhinavsingh.com/blog/2010/08/how-to-write-external-jabber-components-in-php-using-jaxl-library/
+
+[[http://abhinavsingh.com/blog/2010/08/how-to-write-external-jabber-components-in-php-using-jaxl-library/][How to write External Jabber Components in PHP using Jaxl library?]]
+
+
+YK-IM (愉快网聊天系统) 需求的下列特性，XMPP 协议不直接支持，需进行扩展：
+
+1. 消息发送时间以服务器为准；
+2. 信息已读回执；
+3. 用户头像与愉快网统一；
+4. 加入黑名单同时保存拉黑时间；
+5. 加入黑名单同时同步到数据库。
+
+实现这些特性通常需要 PHP 和 Xmpp 服务器交互，方案有四：
+
+1. 参照 Jabber Component Protocol ([[http://xmpp.org/extensions/xep-0114.html][XEP-0114]]) 开发 XMPP 组件服务器 (PHP
+   可使用 Jaxl 库)；
+2. 使用我的设计：利用 Redis 服务器事件，用 PHP 通过 Redis 中转直接调用
+   Xmpp 服务器；
+3. 开发 Xmpp 服务器模块，直接扩展 Xmpp 协议实现；
+4. 使用 PHP 开发 Xmpp 客户端，代理客户端操作。
+
+
+方案 1 开发难度最大，方案 4 最简单但是运行效率最低。综合运行效率和开发
+成本考虑，方案 2, 3 是最优的。
+
+我的建议是当不得不调用 php 接口时，使用方案 2；
+当可以不调用 php 接口时，使用方案 3 更直接。
+
+目前注册 xmpp 新用户使用的方案 2，黑名单，消息时间戳功能使用方案 3。
+
+
+[[http://wiki.jabbercn.org/XEP-0114][XEP-0114]]
+
+Redis: http://redis.io/topics/pubsub
+yk-im-channel
+
+
+| register | usernames:yukuai.com     | lists  | 处理堆栈，批量压入后，循环 pop 处理 |
+|          | stack-adduser:yukuai.com |        |                                     |
+|          | passwords:yukuai.com     | Hashes | 密码字典，根据 userpin 查询密码     |
+|          |                          |        |                                     |
+
+
+1. php 准备命令，如 register；
+2. php 准备参数并存入 redis，为提高效率，尽量一个命令执行多个数据。如建立一个参数堆栈；
+3. php 发布命令到 redis 指定频道，如 $redis->publish('im-channel:yukuai.com',
+   'register');
+4. ejabberd 监听到频道事件：'register'；
+5. ejabberd 从参数堆栈里取数据，轮流执行命令。
+
+需返回结果：
+1. php 发布命令时，加参数，如 'register --callback ret73dcc9a3e6ff3778'；
+2. php 在 redis 建立结果堆栈 ret73dcc9a3e6ff3778:yukuai.com，并 BLPOP；
+3. ejabberd 执行命令后，把结果压入堆栈 ret73dcc9a3e6ff3778:yukuai.com；
+4. php 取得命令结果，继续执行后续动作。
+
+
+3. 用户头像与愉快网统一；
+| redis                        |   |
+| jid-nickname:dict.yukuai.com |   |
+| jid-avatar:dict.yukuai.com   |   |
+
+
+约吃饭 lotreal 测试版 token
+c0cf64909cd8a42224cc2c81e7ae4a146a92ec005adec85930ba9c93408dcc50
+
+* fds
+
+Redis_Command:exec('get_offmsg_num', $jid);
+
+Redis_Command:exec('register', array());
+
+* 聊天室
+http://wiki.jabbercn.org/XEP-0045#.E6.89.80.E6.9C.89.E8.80.85.E7.94.A8.E4.BE.8B

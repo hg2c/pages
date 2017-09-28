@@ -1,0 +1,225 @@
+* network
+** ks01
+[root@ks01 ~]# cat /etc/sysconfig/network-scripts/route-eth0
+10.0.2.0/24 via 192.168.1.131 dev eth0
+10.0.3.0/24 via 192.168.1.132 dev eth0
+[root@ks01 ~]# cat /etc/sysconfig/network-scripts/route-kbr0
+10.0.1.0/24 dev kbr0 scope link src 10.0.1.1
+
+* vagrant
+Vagrant 开发环境配置
+https://github.com/astaxie/Go-in-Action/blob/master/ebook/zh/preface.md
+自行建立 Vagrant Base Box -- Linux
+http://blog.sohoffice.com/2013-05-29-create-your-own-vagrant-base-box.html
+学习 Ansible + Vagrant
+http://icyleaf.com/2013/12/learning-ansible-and-vagrant/
+~/Downloads/vagrant-centos-7-1503-x86_64-minimal.box
+https://github.com/bbirkinbine/vagrant-centos-7-1503-x86_64-minimal
+[教學]使用Vagrant練習環境佈署
+http://gogojimmy.net/2013/05/26/vagrant-tutorial/
+
+当流浪者(Vagrant)遇见码头工人(Docker): 初见
+http://betacz.com/2014/05/20/vagrant-met-docker/
+
+使用 Vagrant 构建开发环境
+http://www.cnblogs.com/blackpuppy/p/vagrant_manage_development_environment.html
+
+# 自动化的高效团队开发环境
+http://tchen.me/posts/2013-04-25-engineering-environment-for-smart-team.html
+
+# Vagrant Tutorial（1）雲端研發人員，你也需要虛擬機！
+http://www.codedata.com.tw/social-coding/vagrant-tutorial-1-developer-and-vm
+
+How to set up a self-hosted "vagrant cloud" with versioned, self-packaged vagrant boxes
+https://github.com/hollodotme/Helpers/blob/master/Tutorials/vagrant/self-hosted-vagrant-boxes-with-versioning.md
+
+Vagrant Tutorial（5）客製化虛擬機內容的幾種方法
+http://www.codedata.com.tw/social-coding/vagrant-tutorial-5-vm-customization
+
+http://www.vagrantbox.es/
+
+* dfs
+有效運用你的 FreeNAS，把 VM 的硬碟放上去如何？
+http://blog.sohoffice.com/2014-01-29-virtualbox-freenas-iscsi.html
+http://zh.wikipedia.org/wiki/ISCSI
+
+* rpmbuild
+GIT 仓库: gito:consul-rpm.git/prepare-rpmbuild.sh
+
+Default configuration: /usr/lib/rpm/macros
+
+
+* consul
+
+
+用于服务自动注册，服务专用DNS（如：redis.service.zbj）,haproxy 自动配置
+
+** 制作安装包（暂无官方 RPM 包）
+
+GIT 仓库: gito:consul-rpm.git
+项目地址: master:/luo/consul-rpm/
+
+git clone gito:consul-rpm.git; cd consul-rpm
+
+# 安装 rpm build 环境
+./prepare-rpmbuild.sh
+
+# 打包，并复制到 /www/repo/7/x86_64 目录，然后更新本地 yum 仓库
+./fpm-server.sh
+
+# 安装 consul-server，然后验证 consul 是否被成功安装
+./verify-install
+
+find-leader
+CONSUL_SERVER="zm1 zm2 ca cb"
+
+if [ "$1" == "-L" ]; then
+    # Start the appropriate services on master:
+    for HOST in ${CONSUL_SERVER}; do
+        echo $HOST
+        ssh $HOST consul info | grep leader
+    done
+fi
+
+
+** consul template
+yum install git make go
+
+* dns
+** pdns-recursor
+rec_control reload-lua-script
+https://github.com/PowerDNS/pdns/blob/master/pdns/powerdns-example-script.lua
+
+
+* yum repo
+
+ssh master
+
+# 配置
+echo "192.168.1.42\trepo.service.zbj" >> /etc/hosts
+
+/etc/consul.d/repo.json
+/luo/dockerapps/nginx/conf.d/repo.conf
+
+/etc/yum.repos.d/zbj.repo
+
+yum repolist
+yum --disablerepo="*" --enablerepo="zbj" list available
+
+# repo 目录
+/www/repo
+
+# 运行
+/luo/dockerapps/nginx/run
+
+# 验证
+curl http://repo.service.zbj/7/x86_64/repodata/repomd.xml
+
+# 更新 repo
+createrepo --update /www/repo/7/x86_64
+
+@client:
+## 清除 repo 缓存
+yum clean metadata
+## 查看多版本软件
+yum --showduplicates list consul
+## 安装多版本软件
+yum install <package name>-<version info>
+
+# TODO
+/luo/dockerapps/repo/docker-yum.service
+
+
+* docker-registry
+
+# 配置
+/etc/consul.d/docker.json
+
+# 验证
+curl docker.service.zbj
+
+
+* kube-minion
+
+# 配置
+commit 4a188c072f3546fe1f58a6b7de16a85ddd29094b
+gito:marvin.git
+USE ansible-playbook -i production setup.yml TO config minions ovs network OK
+
+
+# 禁用 gre
+mv ifcfg-gre{0,1,2} /tmp/
+
+
+* ELK
+
+** elasticsearch
+
+*** 配置 ES 集群
+
+改 cluster.name 为一致即可。
+
+*** 检查集群健康
+curl elasticsearch.service.zbj:9200/_cluster/health
+
+
+* 存储
+
+** sheepdog
+yum install -y make automake autoconf gcc nss-devel wget git glib2
+
+yum install -y corosynclib-devel
+
+cd /etc/corosync
+cp corosync.conf.example corosync.conf
+
+! 编辑corosync.conf修改bindnetaddr成你的网段如192.168.1.0
+
+corosync
+tail -f /var/log/cluster/corosync.log
+
+corosync是一个简单的集群管理器，其基本原理是通过组播的方式来进行通信，达到信息管理的目的。根据淘宝的调研，corosync最多只支持50个节点的集群，推荐使用zookeeper进行集群管理。
+
+# for autoreconf aclocal
+yum install autoconf automake
+git clone https://github.com/sheepdog/sheepdog.git
+cd sheepdog
+./autogen.sh
+./configure
+
+│configure: error: liburcu 0.6.0 or later is required
+
+make install
+
+
+
+* 坑
+
+** kube-apiserver 无法启动
+[root@km01 ~]# systemctl status kube-apiserver
+kube-apiserver.service - Kubernetes API Server
+   Loaded: loaded (/usr/lib/systemd/system/kube-apiserver.service; enabled)
+   Active: failed (Result: start-limit) since Tue 2015-03-03 05:25:52 CST; 909ms ago
+     Docs: https://github.com/GoogleCloudPlatform/kubernetes
+  Process: 9362 ExecStart=/usr/bin/kube-apiserver ${KUBE_LOGTOSTDERR} ${KUBE_LOG_LEVEL} ${KUBE_ETCD_SERVERS} ${KUBE_API_ADDRESS} ${KUBE_API_PORT} ${KUBELET_PORT} ${KUBE_ALLOW_PRIV} ${KUBE_SERVICE_ADDRESSES} ${KUBE_API_ARGS} (code=exited, status=255)
+ Main PID: 9362 (code=exited, status=255)
+
+Mar 03 05:25:52 km01 systemd[1]: Unit kube-apiserver.service entered failed state.
+Mar 03 05:25:52 km01 systemd[1]: kube-apiserver.service holdoff time over, scheduling restart.
+Mar 03 05:25:52 km01 systemd[1]: Stopping Kubernetes API Server...
+Mar 03 05:25:52 km01 systemd[1]: Starting Kubernetes API Server...
+Mar 03 05:25:52 km01 systemd[1]: kube-apiserver.service start request repeated too quickly, refusing to start.
+Mar 03 05:25:52 km01 systemd[1]: Failed to start Kubernetes API Server.
+Mar 03 05:25:52 km01 systemd[1]: Unit kube-apiserver.service entered failed state.
+
+*解决*
+
+*CHECK* var not define: /etc/kubernetes/config
+# KUBE_API_PORT="--port=8080"
+# KUBELET_PORT="--kubelet_port=10250"
+
+
+* 架构图
+http://aws.amazon.com/cn/architecture/icons/
+
+http://www.jianshu.com/p/59bc3c827bb6

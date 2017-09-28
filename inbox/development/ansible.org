@@ -1,0 +1,73 @@
+* INSTALL
+# http://docs.ansible.com/intro_installation.html
+yum install ansible
+
+* SNIPPET
+ansible all -i production -m copy -a "src=extra/hosts dest=/etc/hosts"
+ansible all -i production -a 'yum -y install iptables-services'
+
+ansible-playbook -i production pre-setup/ping.yml
+
+* dump vars
+** template:
+HOSTVARS (ANSIBLE GATHERED, group_vars, host_vars) :
+
+{{ hostvars[inventory_hostname] | to_yaml }}
+
+PLAYBOOK VARS:
+
+{{ vars | to_yaml }}
+
+** playbook:
+- hosts: all
+  tasks:
+  - template:
+      src: templates/dump_variables
+      dest: /tmp/ansible_variables
+  - fetch:
+      src: /tmp/ansible_variables
+      dest: "{{inventory_hostname}}_ansible_variables"
+
+* grep check
+- name: check if proper ogr formats set up
+  shell: ogr2ogr --formats | grep $item
+  with_items:
+    - PostgreSQL
+    - FileGDB
+    - Spatialite
+  register: ogr_check
+  # grep will exit with 1 when no results found.
+  # This causes the task not to halt play.
+  ignore_errors: true
+
+- name: install proper ogr formats
+  action: DO STUFF
+  when: ogr_check|failed
+
+
+- name: test playbook
+  user: root
+  hosts: all
+
+  tasks:
+
+      # it is possible to save the result of any command in a named register.  This variable will be made
+      # available to tasks and templates made further down in the execution flow.
+
+      - shell: grep hi /etc/motd
+        ignore_errors: yes
+        register: motd_result
+
+      # and here we access the register.  Note that variable is structured data because
+      # it is a return from the command module.   The shell module makes available variables such as
+      # as 'stdout', 'stderr', and 'rc'.
+
+      # here we run the next action only if the previous grep returned true
+
+      - shell: echo "motd contains the word hi"
+        when: motd_result.rc == 0
+
+      # alternatively:
+
+      - shell: echo "motd contains the word hi"
+        when: motd_result.stdout.find('hi') != -1

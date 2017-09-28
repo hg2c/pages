@@ -1,0 +1,30 @@
+#Host 1 Configuration
+ovs-vsctl add-br br0
+ovs-vsctl add-br br1
+ovs-vsctl add-port br0 eth0
+ifconfig eth0 0 && ifconfig br0 192.168.1.10 netmask 255.255.255.0
+route add default gw 192.168.1.1 br0
+ifconfig br1 10.1.2.10 netmask 255.255.255.0
+ovs-vsctl add-port br1 gre1 -- set interface gre1 type=gre options:remote_ip=192.168.1.11
+
+#Host 1 Configuration
+ovs-vsctl add-br br0
+ovs-vsctl add-br br1
+ovs-vsctl add-port br0 eth0
+ifconfig eth0 0 && ifconfig br0 192.168.1.11 netmask 255.255.255.0
+route add default gw 192.168.1.1 br0
+ifconfig br1 10.1.2.11 netmask 255.255.255.0
+ovs-vsctl add-port br1 gre1 -- set interface gre1 type=gre options:remote_ip=192.168.1.10
+
+
+
+ovs-vsctl add-port br1 gre1 -- set interface gre1 type=gre options:remote_ip=192.168.1.10
+ovs-vsctl add-port br1 gre1 -- set interface gre1 type=gre options:remote_ip=192.168.1.11
+
+ovs-vsctl del-port gre1
+ovs-vsctl add-port br1 vx1 -- set interface vx1 type=vxlan options:remote_ip=192.168.1.10
+ovs-vsctl add-port br1 vx1 -- set interface vx1 type=vxlan options:remote_ip=192.168.1.11
+
+
+[[http://bingotree.cn/?p=582][OVS简单学习
+]]0.明白一个概念，port指的是br上的口，interface指的是网卡。所以我们可以通过 ovs-vsctl add-port ovs-switch p0在ovs-switch这个br上添加端口，但这个时候linux上没有p0这个虚拟网卡。如果需要有这个虚拟网卡，需要建立interface：ovs-vsctl set Interface p0 type=internal，这个时候ifconfig -a才能看到p0这个口。

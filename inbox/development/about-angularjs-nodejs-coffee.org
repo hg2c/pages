@@ -1,0 +1,13 @@
+1. angular.module('wis.services', [])
+   这里即使为空也必须指定 []
+
+2. coffeescript 里空格和 tab 缩进不能混用
+
+3. /luo/abc/lf/lftr_v2/node_modules/connect-redis/lib/connect-redis.js:96
+   RedisStore.prototype.__proto__ = Store.prototype;
+
+   TypeError: Cannot read property 'prototype' of undefined
+
+   ➜  lftr_v2 git:(master) ✗ npm uninstall connect-redis
+   unbuild connect-redis@1.5.0
+   ➜  lftr_v2 git:(master) ✗ npm install connect-redis@1.4.7

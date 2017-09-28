@@ -1,0 +1,149 @@
+* 说明
+** 返回值
+1. <XXX> 表示为一个标准对象 XXX，如 <RestaurantBooking>.
+2. 默认返回为 json 字符串。如 获取餐厅配置接口 返回：
+#+begin_src json
+{"name":"", booking:{}}
+#+end_src
+* 获取餐厅配置接口
+返回餐厅配置键值对象
+
+** 接口调用请求说明
+GET http://api.yukuai.com/restaurant/config?rid=RESTAURANTID&uid=USERID
+
+** 参数说明
+| 参数 | 是否必须 | 说明                        |
+|------+----------+-----------------------------|
+| rid  | 是       | 餐厅ID                      |
+| uid  | 否       | 提供 uid 时返回用户特定配置 |
+
+** 返回说明
+正常情况下，会返回餐厅配置对象<RestaurantConfig>:
+
+| 类型    | 键                  | 说明                 |
+|---------+---------------------+----------------------|
+| string  | name                | 餐厅名字             |
+| boolean | booking.menu        | 是否支持预定时点菜   |
+| boolean | booking.table       | 是否支持预订时选座   |
+| string  | customer.manager    | 客户经理的UID        |
+| int     | booking.dinner.last | 晚餐最后可预定时间戳 |
+| int     | booking.lunch.last  | 午餐最后可预定时间戳 |
+
+** 使用场景
+判断商家是否可以在线选菜
+判断商家是否支持在线选桌
+获取客户预定时间配置，并计算出可预订时间
+
+* 获取餐厅预定令牌状态
+返回指定令牌在餐厅的预定状态
+
+** 接口调用请求说明
+GET http://api.yukuai.com/restaurant/booking/status?token=TOKEN
+
+** 参数说明
+| 参数  | 是否必须 | 说明     |
+|-------+----------+----------|
+| token | 是       | 预定令牌 |
+
+** 返回说明
+正常情况下，会返回餐厅预定对象<RestaurantBooking>:
+
+| 类型            | 键                    | 说明                     |
+|-----------------+-----------------------+--------------------------|
+| Array<MenuItem> | menu                  | 点菜单，menu.item 的集合 |
+| <MenuItem>      | menu.item             | 菜单项目对象             |
+| string          | menu.item.name        | 菜单名                   |
+| int             | menu.item.amount      | 数量                     |
+| float           | menu.item.price       | 价格                     |
+| string          | menu.item.coupon      | 优惠码                   |
+|-----------------+-----------------------+--------------------------|
+| Array<Table>    | tables                | 预定桌位，table 的集合   |
+| <Table>         | tables.table          | 桌台对象                 |
+| string          | tables.table.name     | 桌台名字                 |
+| string          | tables.table.position | 桌台位置                 |
+|-----------------+-----------------------+--------------------------|
+| <Order>         | order                 | 支付订单对象             |
+| boolean         | order.paid            | 是否已经支付             |
+
+** 使用场景
+判断客户是否已经选择过菜品;
+客户是否已经选择过房桌，如果选择过需要将选择的餐桌展示到前端；
+
+* 提交点菜、选座等各种预定信息。
+
+** 接口调用请求说明
+POST http://api.yukuai.com/restaurant/booking/fill?token=TOKEN
+
+** 参数说明
+| 参数  | 是否必须 | 说明     |
+|-------+----------+----------|
+| token | 是       | 预定令牌 |
+
+** POST DATA
+
+<RestaurantBooking>
+
+** 返回说明
+正常情况下，会返回餐厅预定结果 <RestaurantBookingResult>
+
+| 类型            | 键                    | 说明                     |
+|-----------------+-----------------------+--------------------------|
+
+TODO
+
+** 使用场景
+提交客户选择菜品信息
+
+* 支付附在预定令牌上的预定订单
+
+** 接口调用请求说明
+GET http://api.yukuai.com/restaurant/booking/pay?token=TOKEN
+
+** 参数说明
+| 参数  | 是否必须 | 说明     |
+|-------+----------+----------|
+| token | 是       | 预定令牌 |
+
+** 返回说明
+
+TODO
+
+** 使用场景
+判断本订单是否已经提交过并生成订单号
+
+* 获取指定时段的桌台使用情况
+** 接口调用请求说明
+GET http://api.yukuai.com/restaurant/table/status?time=/2013/12/25/dinner
+
+** 参数说明
+| 参数 | 是否必须 | 说明                               |
+|------+----------+------------------------------------|
+| time | 是       | 时间，使用餐厅时段格式(见附录TIME) |
+
+** 使用场景
+获取本预定时间和餐段内，保留房信息和已预定房桌信息
+
+* 锁定桌台
+** 接口调用请求说明
+GET http://api.yukuai.com/restaurant/table/lock?tid=TABLEID&time=5
+
+** 参数说明
+| 参数 | 是否必须 | 说明                |
+|------+----------+---------------------|
+| tid  | 是       | 桌台ID              |
+| time | 否       | 锁定时间，默认 5 秒 |
+
+** 使用场景
+选房桌时，调用接口临时锁定房桌
+
+* 附录
+
+** TIME
+
+考虑到餐饮商家特点，加入了时段概念，表示午餐、晚餐。
+
+| 字符串             | 表示                          |
+|--------------------+-------------------------------|
+| /2013/12/25/lunch  | 2013-12-25 午餐（适用于餐厅） |
+| /2013/12/25/dinner | 2013-12-25 晚餐（适用于餐厅） |
+| /2013/12/25/13/30  | 2013-12-25 13:30              |

@@ -1,0 +1,220 @@
+---
+layout: post
+title: "愉快网短信运维文档 Ver1.1"
+date: 2013-05-16 10:01
+comments: true
+categories: yk
+---
+#+OPTIONS: ^:nil
+
+* 系统安装
+
+# 安装 phpredis
+
+  https://github.com/nicolasff/phpredis
+  The phpredis extension provides an API for communicating with the Redis key-value store.
+
+  cd phpredis/
+  phpize
+  ./configure [--enable-redis-igbinary]
+  make && make install
+
+# 安装 php 日志包
+sudo pear channel-discover pear.apache.org/log4php
+sudo pear install log4php/Apache_log4php
+
+# 安装 gearman 和 php-gearman
+yum install php-devel libgearman gearmand libgearman-devel
+pecl install gearman
+
+# 安装 supervisor
+yum install python-setuptools
+easy_install supervisor
+echo_supervisord_conf > /etc/supervisord.conf
+
+# 在 supervisor 里配置 yk-sms 并重启
+supervisorctl restart yk-sms-gmworker
+
+# 安装 phpunit
+pear config-set auto_discover 1
+
+pear install pear.phpunit.de/PHPUnit
+
+pear channel-discover components.ez.no
+pear install --alldeps phpunit/PHPUnit_SkeletonGenerator
+
+
+* 短信网关分配
+
+| 用户 | 网关    | 用途                           |
+|------+---------+--------------------------------|
+| SYS  | MDSP    | 系统用户，用于发送报警短信     |
+| NOYK | MDSHARE | 兼容：发送不带愉快网字样的用户 |
+| TEST | MDSP    | 兼容：1.0短信接口遗留的用户    |
+| YHQ1 | MDSHARE | 优惠券                         |
+| YHQ2 | MDSP    | * 未实际使用                   |
+| YUE  | MDSP    | 约吃饭,订餐厅                  |
+| KK   | MDSHARE | kk 聊天                        |
+| HR   | MDSHARE | 人力资源系统                   |
+
+
+* 参数列表
+
+** Ver1.0 版所需参数
+
+| 必须 | 参数名      | 取值范围                  | 默认值 | 说明                                                                      |
+|------+-------------+---------------------------+--------+---------------------------------------------------------------------------|
+|      | u, user     | [TEST,NOYK,YHQ1,YHQ2,YUE] | TEST   | 标识用户身份，[]中所列标识所有可选值。指定其一，如 YHQ1                   |
+| 是   | m, mobile   | (\d+,)*\d+                |        | 短信接受方手机号码，如群发号码间用','隔开，V1.0 群发数量限制为 5 个号码   |
+| 是   | c, content  | 短信文本                  |        | 短信内容。                                                                |
+|      | gw, gateway | [AUTO,MDSHARE,MDSP,EMSP]  | AUTO   | 指定短信使用可选值其一短信网关发送(优先级：config.php 里的配置 > request) |
+
+
+** Ver1.1 版所需参数
+
+
+| 必须                    | 参数名      | 取值范围                  | 默认值 | 说明                                                                            |
+|-------------------------+-------------+---------------------------+--------+---------------------------------------------------------------------------------|
+|                         | ver         | [1.0,1.1]                 | 1.0    | 版本号，不指定或指定为1.0 时运行在兼容1.0模式。指定1.1后V1.1 增加的参数才生效   |
+| 是                      | m, mobile   | (\d+,)*\d+                |        | 同 V1.0，但 V1.1 群发数量只受 POST 数据大小限制                                 |
+| 是                      | c, content  | 短信文本                  |        | 同 V1.0                                                                         |
+|                         | gw, gateway | [AUTO,MDSHARE,MDSP,EMSP]  | AUTO   | 同 V1.0，但可指定多个网关，如：&gw=MDSP,EMSP 表示先用 MDSP，如出错用EMSP 重试   |
+|                         | u, user     | [TEST,NOYK,YHQ1,YHQ2,YUE] | TEST   | 弃用，仅为兼容 V1.0                                                             |
+|-------------------------+-------------+---------------------------+--------+---------------------------------------------------------------------------------|
+| 是                      | token       | 系统分配                  |        | 用户公钥令牌，由系统分配。用于标识身份                                          |
+| 是                      | signature   | 系统分配                  |        | 签名密钥。根据公钥和密钥等计算，用于身份验证                                    |
+| 是                      | timestamp   | 当前时间戳                |        | 签名时间。注意：签名 60 秒后失效。需服务器对时                                  |
+
+
+
+1. 身份认证
+2. URL 路由 到 Controller
+3. Controller 调用 SMS_Service
+4. SMS_Service 调用 SMS_Censor 检查短信
+5. SMS_Service 调用 SMS_Router 发送短信
+
+
+timestamp: 1362362222, // 服务器返回结果时间
+signature: 0b4707c973dcc9a3e6ff3778b, // 服务器身份验证
+status: (ok|fail|queue), // 返回状态码：成功|失败|进入队列
+extra: mix
+       // 当 status == ok 时，   extra 为回执字符串 'ef384f897f200b6be'，可凭回执查询短信处理情况
+       // 当 status == fail 时， extra 为错误对象 {code: 400, message: '错误信息补充说明'}
+       // 当 status == queue 时，extra 为回执字符串 'ef384f897f200b6be'，可凭回执轮询直到得到短信队列处理结果
+
+2013-03-20 15:05:50 | 186.23.191.200 | OK | SYS | 18623191200 | 2013-03-20 15:05:50 test11 发送到 18623191200,13896079527 的短信异常：illegal_content【愉快网】 | 0 | MDSP | 141125572066743220 |
+
+2013-03-20 15:05:50 | 186.23.191.200 | OK | SYS | 1,2,3,4,5,6,7...(10001) | CONTENT | 0 | MDSP | 141125572066743220 |
+
+2013-03-20 15:05:50 | 186.23.191.200 | OK | SYS | 1,2,3,4,5,6,7 | CONTENT | 0 | MDSP | 141125572066743220 |
+
+2013-03-20 15:05:50 | 186.23.191.200 | OK | SYS | 1,2,3,4,5,6,7 | CONTENT | 0 | MDSP | 141125572066743220 |
+
+** 任务表
+
+| user | ip | mobile    | content | job_sn |    created |
+|------+----+-----------+---------+--------+------------|
+| SYS  | -  | a,b,c,d,e | CCC     | xxoo   | 1362362222 |
+
+** 发送队列表
+
+| job_sn | gateway | response | mobile | content |
+|--------+---------+----------+--------+---------|
+| xxoo   |         |          |        |         |
+
+
+* 术语
+
+SMS根据其收发源，可以分为二种MO和MT短信：
+上行（MO）：上行的意思就是短信发送到服务器端 ，MO又称 Mobile Original；
+下行（MT）：下行的意思就是短信从服务器端发回到手机上，MT又称Mobile
+Terminated，
+简单的说，从手机发起一个的过程叫上行(MO)，到手机结束的过程叫下行(MT)，
+比如，平时给你的朋友发送一条短信，对你来说就是上行(MO)，而对你的朋友来
+说，就是下行(MT)。
+在企业、行业应用中，从系统给手机发送信息的过程叫下行(MT)，而手机发送信
+息给系统的过程叫上行(MO)。
+
+
+* S
+
+1. 解耦发送服务, $sms_gateway->mt($sms);
+
+
+
+* 结构
+
+- SMS_Job
+  - getId
+  - getSms
+    - id :: 短信ID
+    - created :: 短信创建时间（用户提交时间）
+    - from :: 发送者
+    - to :: 目标
+    - content :: 短信内容
+    - sendTime :: 定时发送时间
+  - getContext
+    - ip :: 用户IP
+
+job:{job_id}
+
+- SMS_Gateway
+  - send
+    - process
+    - submit
+  - receive
+- SMS_Gateway_MD
+  - send
+- SMS_Gateway_MD_Webservice
+  - mt
+  - gxmt
+  - report
+
+
+* d
+
+1. SMS_Job :: 客户端提交过来的短信发送任务
+   1. job:created :: timestamp-任务创建时间
+   2. job:id :: uuid
+   3. job:parent :: 父任务的 job_id
+   4. job:children :: 子任务的 job_id 数组
+
+   5. client:ip :: 客户端 IP 地址
+
+   6. sms:id :: 短信ID
+   7. sms:from :: 发送者
+   8. sms:to :: 目标
+   9. sms:content :: 短信内容
+   10. sms:send_time :: 定时发送时间
+
+   11. mt:gateway :: 短信网关
+
+   12. result:status :: (OK|FAIL) 任务完成结果
+   13. result:finish_time :: 任务完成时间
+   14. result:code :: 任务返回码
+   15. result:error :: 捕获到的异常
+   16. result:message :: 额外的消息，如详细错误报告
+
+
+
+lot  15:23:32
+请问：短信定时发送，如果时间是较早的时间，比如定时为昨天。那短信会马上发送出去呢？还是就永远发不出去了？
+漫道技术支持  15:23:56
+马上
+亿美  15:25:26
+如果是今天定时 昨天 信息会提交失败的
+
+
+* 流程
+
+1. 身份认证
+2. 创建短信发送任务
+3. 提交发送任务
+
+
+
+
+
+* 参考连接
+
+http://supervisord.org/

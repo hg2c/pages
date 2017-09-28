@@ -1,0 +1,26 @@
+#+begin_src
+yum install python-setuptools
+easy_install pip
+pip install shadowsocks
+
+ssserver -c /etc/shadowsocks.json
+
+ssserver -c /etc/shadowsocks.json -d start
+ssserver -c /etc/shadowsocks.json -d stop
+#+end_src
+
+#+begin_src js
+{
+  "server":"23.239.23.247",
+  "server_port":25735,
+  "local_address": "127.0.0.1",
+  "local_port":8016,
+  "password":"OutofWallIxcafe.in",
+  "timeout":300,
+  "method":"aes-256-cfb",
+  "fast_open": false
+}
+#+end_src
+
+
+cp -f ocserv.conf.tpl ocserv.conf && cat gfwiplist.txt >> ocserv.conf && systemctl restart ocserv.service

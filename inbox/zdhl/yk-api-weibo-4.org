@@ -1,0 +1,101 @@
+#+TITLE: 愉快网接口文档-微博-Rev4
+#+OPTIONS: toc:2 H:3
+
+| weibo/login/url      | 获取微博登陆地址         |
+| weibo/token          | 获取微博访问令牌         |
+| weibo/update         | 发微博，可带图片         |
+| weibo/login/callback | 在登陆回调页获取访问令牌 |
+
+* 微博
+** weibo/login/url
+
+获取微博登陆地址
+
+*** 调用
+ykapi('weibo/login/url')
+
+*** URL
+GET: /weibo/login/url
+
+*** 参数
+无
+
+*** 返回值
+接口返回字符串：登录地址。如：
+
+https://api.weibo.com/oauth2/authorize?client_id=3245367624&redirect_uri=http%3A%2F%2Fyk-mid.dev.us%2Fweibo%2Flogin%2Fcallback&response_type=code
+
+登录地址中的 client_id (App key)、redirect_uri (回调地址)，需先在新浪微博平台里配置。
+
+
+
+
+** weibo/token
+获取微博访问令牌
+*** 调用
+ykapi('weibo/token')
+
+*** URL
+GET: /weibo/token
+
+*** 参数
+无
+
+*** 返回值
+#+INCLUDE: "assets/object/WeiboLoginCallback.json" src js
+
+** weibo/update
+发微博，可带图片
+*** 调用
+ykapi('weibo/update' , access_token [, pic]);
+
+*** URL
+GET: /weibo/update?access_token=2.00M5odXBG4OdXD5fde4b36cc0q3Dqg&statues=大家好~&pic=http%3A%2F%2Fa.yukuai.cn%2Fhello.png
+
+*** 参数
+ - access_token :: 微博访问令牌，登陆微博后得到。
+ - statues :: 微博文字。
+ - pic :: 【可选】图片地址。如赋值则和文字一并发到微博。
+
+*** 返回值
+正常情况下，会返回微博发送详情。如：
+
+#+INCLUDE: "assets/object/WeiboUpdateOk.json" src js
+
+发送失败时，会返回错误原因。如：
+
+#+INCLUDE: "assets/object/WeiboUUT.json" src js
+
+如果错误原因是 Acceess Token 过期，调用登录接口，登录后再发。
+** weibo/login/callback
+
+在登陆回调页获取访问令牌
+
+*** 调用
+ykapi('weibo/login/callback')
+
+*** URL
+GET: /weibo/login/callback
+
+*** 参数
+无
+
+*** 返回值
+#+INCLUDE: "assets/object/WeiboLoginCallback.json" src js
+** weibo/me
+发微博，可带图片
+*** 调用
+ykapi('weibo/update' , access_token [, pic]);
+
+*** URL
+GET: /weibo/update?access_token=2.00M5odXBG4OdXD5fde4b36cc0q3Dqg&statues=大家好~&pic=http%3A%2F%2Fa.yukuai.cn%2Fhello.png
+
+*** 参数
+ - access_token :: 微博访问令牌，登陆微博后得到。
+ - statues :: 微博文字。
+ - pic :: 【可选】图片地址。如赋值则和文字一并发到微博。
+
+*** 返回值
+正常情况下，会返回微博发送详情。如：
+
+#+INCLUDE: "assets/json/WeiboMe.json" src js

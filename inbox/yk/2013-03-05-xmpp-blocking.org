@@ -1,0 +1,126 @@
+---
+deploy: yk lt
+layout: post
+title: "Xmpp:黑名单"
+date: 2013-03-05 15:42
+comments: true
+---
+#+OPTIONS: ^:nil
+
+黑名单相关功能，定义在 XMPP 扩展协议集《[[http://xmpp.org/extensions/xep-0191.html][XEP-0191: Blocking Command]]》里，
+在 ejabberd 由模块 mod_blocking 提供。
+
+* 屏蔽
+
+场景一、账号 tao@yukuai.com 登录后，想屏蔽来自 feng@yukuai.com 的所有消息
+
+发送：
+
+#+begin_src xml
+<iq type='set'>
+  <block xmlns='urn:xmpp:blocking'>
+    <item jid='feng@yukuai.com'/>
+  </block>
+</iq>
+#+end_src
+
+服务器返回：
+
+#+begin_src xml
+<iq from='tao@yukuai.com'
+    to='tao@yukuai.com/18753680631361510992256127' id='push3351607152'
+    type='set'>
+  <query xmlns='jabber:iq:privacy'>
+    <list name='Blocked contacts'/>
+  </query>
+</iq>
+<iq id='push3351607152' to='tao@yukuai.com' type='error'>
+  <query xmlns='jabber:iq:privacy'>
+    <list name='Blocked contacts'/>
+  </query>
+  <error type='cancel' code='501'>
+    <feature-not-implemented
+        xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
+  </error>
+</iq>
+<iq from='tao@yukuai.com'
+    to='tao@yukuai.com/18753680631361510992256127' id='push'
+    type='set'>
+  <block xmlns='urn:xmpp:blocking'>
+    <item jid='feng@yukuai.com'/>
+  </block>
+</iq>
+<iq type='result' id='push'/>
+<iq from='tao@yukuai.com'
+    to='tao@yukuai.com/18753680631361510992256127' type='result'/>
+#+end_src
+
+
+* 解除屏蔽
+
+场景二、想解除对  feng@yukuai.com 的屏蔽
+
+发送：
+
+#+begin_src xml
+<iq type='set'>
+  <unblock xmlns='urn:xmpp:blocking'>
+    <item jid='feng@yukuai.com'/>
+  </unblock>
+</iq>
+#+end_src
+
+服务器返回：
+
+#+begin_src xml
+<iq from='tao@yukuai.com'
+    to='tao@yukuai.com/18753680631361510992256127' id='push35546661'
+    type='set'>
+  <query xmlns='jabber:iq:privacy'>
+    <list name='Blocked contacts'/>
+  </query>
+</iq>
+<iq id='push35546661' to='tao@yukuai.com' type='error'>
+  <query xmlns='jabber:iq:privacy'>
+    <list name='Blocked contacts'/>
+  </query>
+  <error type='cancel' code='501'>
+    <feature-not-implemented
+        xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
+  </error>
+</iq>
+<iq from='tao@yukuai.com'
+    to='tao@yukuai.com/18753680631361510992256127' id='push'
+    type='set'>
+  <unblock xmlns='urn:xmpp:blocking'>
+    <item jid='feng@yukuai.com'/>
+  </unblock>
+</iq>
+<iq type='result' id='push'/>
+<iq from='tao@yukuai.com'
+    to='tao@yukuai.com/18753680631361510992256127' type='result'/>
+#+end_src
+
+* 黑名单查询
+
+发送：
+
+#+begin_src xml
+<iq type='get' id='get-blocked-contacts'>
+  <query xmlns='jabber:iq:privacy'>
+    <list name='Blocked contacts'/>
+  </query>
+</iq>
+#+end_src
+
+服务器返回：
+
+#+begin_src xml
+<iq from='tao@yukuai.com'
+    to='tao@yukuai.com/18753680631361510992256127'
+    id='get-blocked-contacts' type='result'>
+  <query xmlns='jabber:iq:privacy'>
+    <list name='Blocked contacts'/>
+  </query>
+</iq>
+#+end_src
